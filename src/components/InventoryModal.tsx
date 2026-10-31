@@ -3,7 +3,6 @@ import {
   ClassmateMember,
   GameMode,
   QuizDeck,
-  SAMPLE_STUDY_NOTES,
   parseNotesIntoFallbackQuestions,
 } from '../game/rules';
 import {
@@ -104,15 +103,6 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
   }, [deckFolders]);
 
   if (!isOpen) return null;
-
-  const handleLoadSample = (sampleKey: keyof typeof SAMPLE_STUDY_NOTES) => {
-    const sample = SAMPLE_STUDY_NOTES[sampleKey];
-    if (!sample) return;
-    setTitle(sample.title);
-    setSubject(sample.subject);
-    setNotes(sample.notes);
-    setErrorMsg(null);
-  };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -434,14 +424,25 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                             </select>
                             <button
                               type="button"
-                              onClick={() => onSelectDeck(deck)}
+                              onClick={() => {
+                                if (startBattleAfter) {
+                                  const durationSec = getBattleDurationSec();
+                                  if (durationSec === null) return;
+                                  onSelectDeck(deck);
+                                  onLaunchDeck?.(deck, durationSec);
+                                  return;
+                                }
+                                onSelectDeck(deck);
+                              }}
                               className={`mt-1.5 h-7 rounded-lg font-display font-extrabold text-[9px] cursor-pointer ${
                                 isActive
                                   ? 'bg-yellow-400 text-slate-950'
                                   : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
                               }`}
                             >
-                              {isActive ? 'Selected for Battle' : 'Set Active Topic'}
+                              {startBattleAfter
+                                ? (isActive ? 'Launch Selected Topic' : 'Launch with This Topic')
+                                : (isActive ? 'Selected for Battle' : 'Set Active Topic')}
                             </button>
                           </div>
                         </article>
@@ -476,23 +477,6 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
             </div>
 
             <form onSubmit={handleSubmit} className="p-4 space-y-2.5">
-              <div className="flex gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => handleLoadSample('operating_systems')}
-                  className="flex-1 px-2 py-1.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-300 text-[10px] font-bold text-slate-700 cursor-pointer"
-                >
-                  Load OS
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleLoadSample('organic_chemistry')}
-                  className="flex-1 px-2 py-1.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-300 text-[10px] font-bold text-slate-700 cursor-pointer"
-                >
-                  Load Chem
-                </button>
-              </div>
-
               <div>
                 <label className="block text-[10px] font-bold text-slate-700 mb-1">Topic Title *</label>
                 <input
