@@ -2144,7 +2144,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                   data-testid="close-video-popup-btn"
                   onClick={() => setExpandedVideoPeerId(null)}
                   aria-label="Close Video & Chat Pop-Up"
-                  className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                  className="w-8 h-8 rounded-full bg-rose-500 hover:bg-rose-400 text-white flex items-center justify-center shadow-sm transition-colors cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -2156,12 +2156,12 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
               {/* LEFT SIDE: BIGGER VERSION OF ROOM USERS' VIDEOS */}
               <div
                 data-testid="popup-left-videos"
-                className="md:col-span-7 bg-slate-950 text-white p-4 md:p-5 flex flex-col gap-3.5 overflow-y-auto drawer-scroll border-b md:border-b-0 md:border-r border-slate-200"
+                className="md:col-span-7 bg-slate-950 text-white p-4 md:p-5 flex flex-col gap-3 overflow-y-auto drawer-scroll border-b md:border-b-0 md:border-r border-slate-800"
               >
                 {/* Featured Large Video Feed */}
                 <div
                   data-testid="popup-featured-video"
-                  className="relative flex-1 min-h-[220px] rounded-2xl bg-gradient-to-br from-slate-900 via-amber-950/60 to-slate-950 border-2 border-yellow-400/70 shadow-inner overflow-hidden flex flex-col items-center justify-center p-6"
+                  className="relative flex-[2] min-h-[260px] rounded-2xl bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 border-2 border-yellow-400/70 shadow-[0_16px_40px_rgba(250,204,21,0.12)] overflow-hidden flex flex-col items-center justify-center p-6"
                 >
                   {(selectedVideoPeer.id === localPlayerId || selectedVideoPeer.id === 'local-player') &&
                     localMediaStream && (
@@ -2175,17 +2175,17 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                     )}
 
                   <div className="absolute top-3 left-3 flex items-center gap-2 z-10">
-                    <span className="px-2.5 py-1 rounded-xl bg-yellow-400 text-slate-950 font-display font-black text-[10px] uppercase tracking-wider shadow-sm">
+                    <span className="px-2.5 py-1 rounded-lg bg-yellow-400 text-slate-950 font-display font-black text-[10px] uppercase tracking-wider shadow-sm">
                       LIVE CAMERA
                     </span>
-                    <span className="px-2.5 py-1 rounded-xl bg-slate-900/80 border border-white/15 text-yellow-200 font-mono text-[10px]">
+                    <span className="px-2.5 py-1 rounded-lg bg-slate-950/80 border border-yellow-400/30 text-yellow-200 font-mono text-[10px]">
                       {selectedVideoPeer.blockSection}
                     </span>
                   </div>
 
-                  {!localMediaStream && (
+                  {((selectedVideoPeer.id !== localPlayerId && selectedVideoPeer.id !== 'local-player') || !localMediaStream) && (
                     <>
-                      <div className="w-24 h-24 md:w-28 md:h-28 rounded-full bg-gradient-to-tr from-yellow-300 via-amber-400 to-yellow-500 text-slate-950 font-display font-black text-4xl flex items-center justify-center shadow-[0_0_40px_rgba(250,204,21,0.5)] border-4 border-white/80">
+                      <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-gradient-to-tr from-yellow-300 via-amber-400 to-yellow-500 text-slate-950 font-display font-black text-3xl flex items-center justify-center shadow-[0_0_36px_rgba(250,204,21,0.45)] border-4 border-slate-950 ring-2 ring-yellow-300/70">
                         {selectedVideoPeer.name[0]}
                       </div>
                       <div className="mt-3 text-lg font-display font-black text-white tracking-wide">
@@ -2193,42 +2193,59 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                       </div>
                       <div className="text-xs font-mono text-yellow-200/90 mt-0.5">
                         {selectedVideoPeer.id === localPlayerId || selectedVideoPeer.id === 'local-player'
-                          ? 'Your Camera Active'
-                          : `Player Camera · Room #${roomCode}`}
+                          ? videoEnabled ? 'Your Camera Ready' : 'Your Camera Is Off'
+                          : `Waiting for @${selectedVideoPeer.name} camera`}
                       </div>
                     </>
                   )}
                 </div>
 
                 {/* Grid of All Joined Room Users' Videos */}
-                <div>
+                <div className="shrink-0">
                   <div className="text-[11px] font-display font-extrabold text-yellow-300 uppercase tracking-wider mb-2 flex items-center justify-between">
-                    <span>Room Cameras ({activeVideoPeers.length})</span>
-                    <span className="text-[10px] font-mono text-white/60">Click any user video to focus</span>
+                    <span>Room Cameras <span className="text-white/55">({activeVideoPeers.length})</span></span>
+                    <span className="text-[9px] font-mono text-white/55">Select a camera to pin</span>
                   </div>
                   <div className="grid grid-cols-3 gap-2.5">
                     {activeVideoPeers.map((peer) => {
                       const isFocused = peer.id === selectedVideoPeer.id;
+                      const isSelf = peer.id === localPlayerId || peer.id === 'local-player';
                       return (
                         <button
                           key={peer.id}
                           type="button"
                           data-testid={`popup-video-tile-${peer.id}`}
                           onClick={() => setExpandedVideoPeerId(peer.id)}
-                          className={`rounded-2xl p-3 flex flex-col items-center justify-center relative overflow-hidden border transition-all text-center cursor-pointer ${
+                          className={`min-h-[94px] rounded-2xl px-2 py-3 flex flex-col items-center justify-center relative overflow-hidden border transition-all text-center cursor-pointer ${
                             isFocused
-                              ? 'bg-gradient-to-br from-amber-900/90 to-yellow-900/80 border-yellow-400 ring-2 ring-yellow-400/40 shadow-md'
-                              : 'bg-slate-900/90 hover:bg-slate-800 border-white/15'
+                              ? 'bg-gradient-to-br from-amber-900/95 via-slate-900 to-yellow-900/90 border-yellow-400 ring-2 ring-yellow-400/35 shadow-[0_10px_24px_rgba(250,204,21,0.12)]'
+                              : 'bg-slate-900/95 hover:bg-slate-800 border-white/15 hover:border-yellow-400/60'
                           }`}
                         >
-                          <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-yellow-300 to-amber-500 text-slate-950 font-display font-black text-base flex items-center justify-center shadow-sm">
-                            {peer.name[0]}
-                          </div>
+                          {isSelf && localMediaStream ? (
+                            <video
+                              autoPlay
+                              playsInline
+                              muted
+                              ref={(video) => {
+                                if (video) video.srcObject = localMediaStream;
+                              }}
+                              className="w-12 h-12 rounded-xl object-cover border border-yellow-300 shadow-sm"
+                            />
+                          ) : (
+                            <div className={`w-11 h-11 rounded-full flex items-center justify-center font-display font-black text-base shadow-sm ${
+                              isFocused
+                                ? 'bg-yellow-400 text-slate-950'
+                                : 'bg-slate-800 text-yellow-300 border border-white/15'
+                            }`}>
+                              {peer.name[0]}
+                            </div>
+                          )}
                           <span className="text-xs font-display font-bold text-white truncate max-w-full mt-1.5">
                             @{peer.name}
                           </span>
-                          <span className="text-[10px] font-mono text-yellow-200/80 truncate max-w-full">
-                            {peer.blockSection}
+                          <span className="text-[9px] font-mono text-yellow-200/80 truncate max-w-full">
+                            {isSelf ? 'MY CAMERA' : peer.blockSection}
                           </span>
                         </button>
                       );
