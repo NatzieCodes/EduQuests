@@ -191,7 +191,7 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
     let lastTime = performance.now();
     const total = GAME_PREVIEWS.length;
     // Balanced speed: noticeable continuous movement without frame jumps.
-    const orbitSpeed = 0.16;
+    const orbitSpeed = 0.12;
     const selectedCardSpeed = 10;
 
     const tick = (now: number) => {
