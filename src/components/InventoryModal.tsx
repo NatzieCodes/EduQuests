@@ -14,12 +14,14 @@ import {
   FileText,
   Check,
   Layers,
+  Clock,
 } from 'lucide-react';
 
 interface InventoryModalProps {
   isOpen: boolean;
   startBattleAfter?: boolean;
   selectedMode: GameMode;
+  onStartBattle?: (durationSec: number) => void;
   roomCode: string;
   hasRoomOrInvite: boolean;
   classmates: ClassmateMember[];
@@ -29,7 +31,7 @@ interface InventoryModalProps {
   onCreateOrJoinRoom: (code: string) => void;
   onInviteClassmateUsername: (username: string) => void;
   onClose: () => void;
-  onDeckCreated: (deck: QuizDeck, source: string, startBattleNow: boolean) => void;
+  onDeckCreated: (deck: QuizDeck, source: string, startBattleNow: boolean, durationSec?: number) => void;
   onUpdateDeck?: (deckId: string, title: string, notes: string) => void;
   onDeleteDeck?: (deckId: string) => void;
 }
@@ -37,9 +39,11 @@ interface InventoryModalProps {
 export const InventoryModal: React.FC<InventoryModalProps> = ({
   isOpen,
   startBattleAfter = false,
+  selectedMode,
   decks,
   activeDeck,
   onSelectDeck,
+  onStartBattle,
   onClose,
   onDeckCreated,
 }) => {
@@ -49,6 +53,8 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
   const [questionCount, setQuestionCount] = useState(10);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [battleMinutes, setBattleMinutes] = useState('3');
+  const [battleMinutesError, setBattleMinutesError] = useState('');
 
   if (!isOpen) return null;
 
@@ -74,6 +80,19 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
     }
   };
 
+  const getBattleDurationSec = () => {
+    if (selectedMode === 'training') return 0;
+
+    const minutes = Number(battleMinutes);
+    if (!Number.isFinite(minutes) || minutes <= 0 || !Number.isInteger(minutes)) {
+      setBattleMinutesError('Enter a whole number greater than 0.');
+      return null;
+    }
+
+    setBattleMinutesError('');
+    return minutes * 60;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -92,6 +111,9 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
       return;
     }
 
+    const durationSec = getBattleDurationSec();
+    if (durationSec === null) return;
+
     setLoading(true);
     setErrorMsg(null);
 
@@ -109,7 +131,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
       if (res.ok) {
         const data = await res.json();
         if (data?.deck) {
-          onDeckCreated(data.deck, data.source || 'gemini', startBattleAfter);
+          onDeckCreated(data.deck, data.source || 'gemini', startBattleAfter, durationSec);
           setLoading(false);
           onClose();
           return;
@@ -132,7 +154,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
       createdAt: new Date().toISOString().slice(0, 10),
       questions: fallbackQuestions,
     };
-    onDeckCreated(localDeck, 'local-notes-parser', startBattleAfter);
+    onDeckCreated(localDeck, 'local-notes-parser', startBattleAfter, durationSec);
     setLoading(false);
     onClose();
   };
@@ -284,6 +306,54 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                 </span>
               </button>
             </form>
+
+            <div className="rounded-2xl border border-yellow-300 bg-amber-50/70 px-3.5 py-3 flex flex-col sm:flex-row sm:items-end gap-3">
+              <div className="min-w-0 sm:flex-1">
+                <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-amber-700 uppercase tracking-widest mb-1.5">
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>Battle Duration</span>
+                </div>
+                {selectedMode === 'training' ? (
+                  <div className="h-10 px-3 rounded-xl bg-white border border-yellow-300 flex items-center text-sm font-display font-black text-slate-900">
+                    UNTIMED TRAINING
+                  </div>
+                ) : (
+                  <div className="flex items-center rounded-xl bg-white border border-slate-300 focus-within:border-amber-500 px-3">
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      inputMode="numeric"
+                      value={battleMinutes}
+                      onChange={(event) => {
+                        setBattleMinutes(event.target.value);
+                        setBattleMinutesError('');
+                      }}
+                      className="h-10 w-full min-w-0 bg-transparent text-slate-900 font-display font-black outline-none"
+                      aria-label="Battle duration in minutes"
+                    />
+                    <span className="text-[10px] font-mono font-bold text-slate-500 whitespace-nowrap">MINUTES</span>
+                  </div>
+                )}
+                {battleMinutesError && (
+                  <p className="mt-1 text-xs font-bold text-rose-600">{battleMinutesError}</p>
+                )}
+              </div>
+              {startBattleAfter && onStartBattle && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const durationSec = getBattleDurationSec();
+                    if (durationSec === null) return;
+                    onStartBattle(durationSec);
+                    onClose();
+                  }}
+                  className="h-10 px-5 rounded-xl bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500 hover:from-yellow-200 hover:to-amber-400 text-slate-950 font-display font-black text-xs whitespace-nowrap transition-all cursor-pointer"
+                >
+                  START BATTLE
+                </button>
+              )}
+            </div>
           </section>
 
           {/* =================================================================

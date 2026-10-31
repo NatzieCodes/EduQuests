@@ -876,7 +876,12 @@ export default function App() {
     showToast(`Synced "${activeDeck.title}" with Room ${roomCode}`);
   };
 
-  const handleDeckCreated = (newDeck: QuizDeck, _source: string, shouldStartBattle: boolean) => {
+  const handleDeckCreated = (
+    newDeck: QuizDeck,
+    _source: string,
+    shouldStartBattle: boolean,
+    durationSec?: number
+  ) => {
     setDecks((prev) => [newDeck, ...prev]);
     setActiveDeck(newDeck);
     setHasCustomNotes(true);
@@ -885,7 +890,7 @@ export default function App() {
     showToast(`Saved to Inventory & Loaded Topic: ${newDeck.title}`);
 
     if (shouldStartBattle) {
-      launchActualBattle();
+      launchActualBattle(undefined, undefined, durationSec);
     }
   };
 
@@ -1013,6 +1018,11 @@ export default function App() {
         isOpen={aiModalOpen}
         startBattleAfter={startBattleAfterNotes}
         selectedMode={selectedMode}
+        onStartBattle={(durationSec) => {
+          setAiModalOpen(false);
+          setStartBattleAfterNotes(false);
+          launchActualBattle(undefined, undefined, durationSec);
+        }}
         roomCode={roomCode}
         hasRoomOrInvite={hasRoomOrInvite}
         classmates={classmates}

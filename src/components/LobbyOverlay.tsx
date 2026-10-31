@@ -216,9 +216,6 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
   const [authModalMode, setAuthModalMode] = useState<'closed' | 'profile' | 'login' | 'register'>('closed');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
-  const [startPopupOpen, setStartPopupOpen] = useState(false);
-  const [battleMinutes, setBattleMinutes] = useState('3');
-  const [battleMinutesError, setBattleMinutesError] = useState('');
   const [copiedKey, setCopiedKey] = useState<'live' | 'room' | 'gh' | 'social' | null>(null);
 
   const [draftName, setDraftName] = useState(studentName);
@@ -961,28 +958,29 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
             className="group/profile w-full rounded-3xl bg-white/95 hover:bg-gradient-to-br hover:from-amber-50/95 hover:via-white hover:to-yellow-50/90 text-slate-900 border-2 border-slate-200/90 hover:border-yellow-400 hover:ring-4 hover:ring-yellow-400/25 p-4 shadow-[0_12px_40px_rgba(0,0,0,0.18)] hover:shadow-[0_20px_48px_rgba(250,204,21,0.38)] hover:-translate-y-1 active:translate-y-0 transition-all duration-200 relative overflow-hidden cursor-pointer"
             title="Open scholar profile"
           >
-            <button
-              type="button"
-              data-testid="player-logout-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                onLogoutStudent();
-              }}
-              className="absolute top-[39px] right-4 h-8 px-2.5 rounded-xl bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-300 text-slate-600 hover:text-rose-600 font-display font-bold text-[11px] flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer z-10"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span>Logout</span>
-            </button>
-
             <div className="w-full">
-              <div className="min-w-0 pr-24 pb-3 border-b border-slate-200/90">
-                <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-amber-700 uppercase tracking-wider">
-                  <UserCheck className="w-3.5 h-3.5 text-amber-600" />
-                  <span>SCHOLAR PROFILE</span>
+              <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-200/90">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-amber-700 uppercase tracking-wider">
+                    <UserCheck className="w-3.5 h-3.5 text-amber-600" />
+                    <span>SCHOLAR PROFILE</span>
+                  </div>
+                  <div className="text-base font-display font-black text-slate-900 leading-tight mt-1 group-hover/profile:text-amber-700 transition-colors truncate">
+                    {isLoggedIn ? `@${studentName}` : 'Guest Student'}
+                  </div>
                 </div>
-                <div className="text-base font-display font-black text-slate-900 leading-tight mt-1 group-hover/profile:text-amber-700 transition-colors truncate">
-                  {isLoggedIn ? `@${studentName}` : 'Guest Student'}
-                </div>
+                <button
+                  type="button"
+                  data-testid="player-logout-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onLogoutStudent();
+                  }}
+                  className="shrink-0 h-8 px-2.5 rounded-xl bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-300 text-slate-600 hover:text-rose-600 font-display font-bold text-[11px] flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer z-10"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Logout</span>
+                </button>
               </div>
 
               <div className="mt-3 min-w-0">
@@ -1117,7 +1115,6 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                       type="button"
                       onClick={() => {
                         onSelectMode(mKey);
-                        setBattleDurationSec(mKey === 'training' ? 0 : 180);
                       }}
                       className={`py-2 px-1 rounded-xl text-center transition-all cursor-pointer ${
                         isSelected
@@ -1151,8 +1148,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                 data-start="true"
                 onClick={(e) => {
                   e.currentTarget.blur();
-                  setBattleMinutesError('');
-                  setStartPopupOpen(true);
+                  onOpenInventoryModal(true);
                 }}
                 className="w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500 hover:from-yellow-200 hover:to-amber-400 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99] text-slate-950 font-display font-black text-base tracking-wide flex items-center justify-center gap-2 shadow-[0_8px_24px_rgba(245,158,11,0.45)] hover:shadow-[0_12px_28px_rgba(245,158,11,0.6)] transition-all whitespace-nowrap cursor-pointer"
               >
@@ -2324,98 +2320,6 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                   </div>
                 </form>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-      {startPopupOpen && (
-        <div
-          className="fixed inset-0 z-[110] pointer-events-auto flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm"
-          onClick={() => setStartPopupOpen(false)}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="battle-start-title"
-            onClick={(event) => event.stopPropagation()}
-            className="w-full max-w-sm rounded-3xl bg-white border border-yellow-400 shadow-[0_24px_80px_rgba(0,0,0,0.45)] overflow-hidden"
-          >
-            <div className="px-5 py-4 bg-slate-950 text-white flex items-center justify-between">
-              <div>
-                <div className="text-[10px] font-mono font-bold text-yellow-300 uppercase tracking-widest">
-                  Start Battle
-                </div>
-                <h2 id="battle-start-title" className="text-lg font-display font-black">
-                  {selectedMode === 'training' ? 'Training Duration' : 'Choose Match Length'}
-                </h2>
-              </div>
-              <button
-                type="button"
-                onClick={() => setStartPopupOpen(false)}
-                aria-label="Close battle start popup"
-                className="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="p-5">
-              {selectedMode === 'training' ? (
-                <div className="rounded-2xl bg-amber-50 border border-yellow-300 px-4 py-3 text-center">
-                  <div className="text-sm font-display font-black text-slate-900">UNTIMED TRAINING</div>
-                  <div className="text-xs text-slate-600 mt-1">The dummy will not attack.</div>
-                </div>
-              ) : (
-                <label className="block">
-                  <span className="block text-xs font-mono font-bold text-slate-600 uppercase tracking-wider mb-2">
-                    Minutes
-                  </span>
-                  <div className="flex items-center gap-2 rounded-2xl border-2 border-slate-200 focus-within:border-yellow-400 bg-slate-50 px-3">
-                    <input
-                      type="number"
-                      min="1"
-                      step="1"
-                      inputMode="numeric"
-                      value={battleMinutes}
-                      onChange={(event) => {
-                        setBattleMinutes(event.target.value);
-                        setBattleMinutesError('');
-                      }}
-                      className="w-full h-12 bg-transparent text-slate-950 font-display font-black text-lg outline-none"
-                      aria-label="Battle duration in minutes"
-                      autoFocus
-                    />
-                    <span className="text-xs font-bold text-slate-500 whitespace-nowrap">MINUTES</span>
-                  </div>
-                </label>
-              )}
-
-              {battleMinutesError && (
-                <div className="mt-2 text-xs font-bold text-rose-600">{battleMinutesError}</div>
-              )}
-
-              <button
-                type="button"
-                onClick={() => {
-                  if (selectedMode === 'training') {
-                    setStartPopupOpen(false);
-                    onStartBattle(0);
-                    return;
-                  }
-
-                  const minutes = Number(battleMinutes);
-                  if (!Number.isFinite(minutes) || minutes <= 0 || !Number.isInteger(minutes)) {
-                    setBattleMinutesError('Enter a whole number greater than 0.');
-                    return;
-                  }
-
-                  setStartPopupOpen(false);
-                  onStartBattle(minutes * 60);
-                }}
-                className="mt-4 w-full h-12 rounded-xl bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500 hover:from-yellow-200 hover:to-amber-400 text-slate-950 font-display font-black text-sm transition-all cursor-pointer"
-              >
-                START BATTLE
-              </button>
             </div>
           </div>
         </div>
