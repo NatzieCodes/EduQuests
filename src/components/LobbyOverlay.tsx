@@ -2152,17 +2152,53 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
               {/* LEFT SIDE: BIGGER VERSION OF ROOM USERS' VIDEOS */}
               <div
                 data-testid="popup-left-videos"
-                className="md:col-span-8 bg-slate-300 text-white p-3 md:p-4 overflow-hidden border-b md:border-b-0 md:border-r border-slate-400/70"
+                className="md:col-span-8 bg-slate-300 text-white p-3 md:p-4 flex flex-col gap-3 overflow-hidden border-b md:border-b-0 md:border-r border-slate-400/70"
               >
-                <div className="h-full grid grid-cols-2 grid-rows-3 gap-3">
-                  {activeVideoPeers.map((peer) => {
+                <div
+                  data-testid="popup-pinned-camera"
+                  className="relative flex-1 min-h-[300px] rounded-xl bg-slate-950 border-2 border-violet-500/90 shadow-[0_12px_30px_rgba(15,23,42,0.22)] overflow-hidden flex items-center justify-center"
+                >
+                  {(selectedVideoPeer.id === localPlayerId || selectedVideoPeer.id === 'local-player') && localMediaStream ? (
+                    <video
+                      ref={localVideoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                  ) : (
+                    <>
+                      <div className="w-24 h-24 md:w-28 md:h-28 rounded-full bg-slate-800 border border-slate-700 text-yellow-300 font-display font-black text-3xl md:text-4xl flex items-center justify-center shadow-lg">
+                        {selectedVideoPeer.name[0]}
+                      </div>
+                      <div className="absolute bottom-5 left-1/2 -translate-x-1/2 px-4 py-2 rounded-xl bg-slate-950/75 border border-white/10 text-white font-display font-black text-sm md:text-base">
+                        @{selectedVideoPeer.name}
+                      </div>
+                    </>
+                  )}
+                  <div className="absolute left-4 top-4 px-3 py-1.5 rounded-lg bg-slate-950/80 border border-violet-400/50 text-violet-200 text-[10px] font-mono uppercase tracking-wider">
+                    Pinned Camera
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-4 gap-3 shrink-0">
+                  {activeVideoPeers.slice(0, 4).map((peer, index) => {
                     const isSelf = peer.id === localPlayerId || peer.id === 'local-player';
+                    const isPinned = peer.id === selectedVideoPeer.id;
                     const hasLiveSelfVideo = isSelf && videoEnabled && localMediaStream;
                     return (
-                      <div
+                      <button
                         key={peer.id}
+                        type="button"
                         data-testid={`popup-video-tile-${peer.id}`}
-                        className="relative min-h-[160px] rounded-2xl bg-slate-950 border border-slate-700/80 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04),0_8px_18px_rgba(15,23,42,0.18)] overflow-hidden flex items-center justify-center"
+                        onClick={() => setExpandedVideoPeerId(peer.id)}
+                        aria-label={`Pin ${peer.name}'s camera`}
+                        aria-pressed={isPinned}
+                        className={`relative h-[112px] rounded-xl border overflow-hidden text-center cursor-pointer transition-all duration-200 ${
+                          isPinned
+                            ? 'bg-slate-900 border-violet-400 ring-2 ring-violet-400/50 shadow-[0_10px_24px_rgba(139,92,246,0.22)]'
+                            : 'bg-slate-950 border-slate-700 hover:border-yellow-400/80 hover:-translate-y-0.5'
+                        }`}
                       >
                         {hasLiveSelfVideo ? (
                           <video
@@ -2175,32 +2211,65 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                             className="absolute inset-0 w-full h-full object-cover"
                           />
                         ) : (
-                          <div className="w-[24%] aspect-square min-w-[58px] max-w-[92px] rounded-full bg-slate-800 border border-slate-700 text-yellow-300 font-display font-black text-2xl md:text-3xl flex items-center justify-center shadow-lg">
+                          <span className="absolute left-1/2 top-[42%] -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-slate-800 border border-slate-700 text-yellow-300 font-display font-black text-lg flex items-center justify-center">
                             {peer.name[0]}
-                          </div>
+                          </span>
                         )}
-
-                        <div className="absolute left-3 bottom-3 right-3 flex items-end justify-between gap-2">
-                          <div className="min-w-0 px-2.5 py-1.5 rounded-lg bg-slate-950/78 border border-white/10 backdrop-blur-sm">
-                            <div className="text-sm font-display font-black text-white truncate">@{peer.name}</div>
-                            <div className="text-[9px] font-mono text-slate-300 truncate">{peer.blockSection}</div>
-                          </div>
-                          <div className="flex gap-1.5 shrink-0">
-                            <span className={`w-8 h-8 rounded-full flex items-center justify-center border shadow-md ${
-                              isSelf ? (micEnabled ? 'bg-yellow-400 text-slate-950 border-amber-300' : 'bg-slate-800 text-slate-300 border-slate-600') : 'bg-slate-800 text-slate-300 border-slate-600'
-                            }`}>
-                              {micEnabled && isSelf ? <Mic className="w-3.5 h-3.5" /> : <MicOff className="w-3.5 h-3.5" />}
-                            </span>
-                            <span className={`w-8 h-8 rounded-full flex items-center justify-center border shadow-md ${
-                              hasLiveSelfVideo ? 'bg-yellow-400 text-slate-950 border-amber-300' : 'bg-slate-800 text-slate-300 border-slate-600'
-                            }`}>
-                              {hasLiveSelfVideo ? <Video className="w-3.5 h-3.5" /> : <VideoOff className="w-3.5 h-3.5" />}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
+                        <span className="absolute left-2 bottom-2 right-2 px-2 py-1 rounded-md bg-slate-950/80 border border-white/10 text-[10px] md:text-xs font-display font-black text-white truncate">
+                          {index === 0 ? 'MY CAM' : index === 1 ? 'CAM 4' : index === 2 ? 'CAM 5' : 'OTHER'}
+                        </span>
+                      </button>
                     );
                   })}
+                  {Array.from({ length: Math.max(0, 4 - activeVideoPeers.length) }).map((_, index) => (
+                    <div
+                      key={`empty-camera-${index}`}
+                      className="h-[112px] rounded-xl bg-slate-950 border border-slate-700 flex items-center justify-center text-slate-500 font-display font-black text-xs uppercase"
+                    >
+                      Camera Open
+                    </div>
+                  ))}
+                </div>
+
+                <div className="rounded-xl bg-slate-950 border border-slate-700/80 px-2.5 py-2 shrink-0">
+                  {activeAttachMenu === 'link' && (
+                    <div className="mb-2 flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={attachUrlInput}
+                        onChange={(event) => setAttachUrlInput(event.target.value)}
+                        placeholder="https://study-resource..."
+                        className="flex-1 h-9 px-3 rounded-lg bg-slate-800 border border-slate-600 text-xs text-white placeholder:text-slate-400 focus:outline-none focus:border-yellow-400"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleQuickShareAttachment('link')}
+                        className="h-9 px-3 rounded-lg bg-yellow-400 text-slate-950 font-display font-black text-xs cursor-pointer"
+                      >
+                        Attach
+                      </button>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-5 gap-2">
+                    {[
+                      { type: 'photo' as const, label: 'Photo', icon: ImageIcon, color: 'text-yellow-300' },
+                      { type: 'video' as const, label: 'Video', icon: Film, color: 'text-amber-300' },
+                      { type: 'link' as const, label: 'Link', icon: Link2, color: 'text-yellow-200' },
+                      { type: 'pdf' as const, label: 'PDF', icon: FileText, color: 'text-rose-300' },
+                      { type: 'notes' as const, label: 'Notes', icon: BookOpen, color: 'text-amber-300' },
+                    ].map(({ type, label, icon: Icon, color }) => (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => handleQuickShareAttachment(type)}
+                        className="h-10 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 hover:border-yellow-400/70 text-white text-xs font-display font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                        title={`Share ${label}`}
+                      >
+                        <Icon className={`w-4 h-4 ${color}`} />
+                        <span>{label}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
