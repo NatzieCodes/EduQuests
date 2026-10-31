@@ -962,22 +962,18 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
             title="Open scholar profile"
           >
             <div className="w-full">
-              <div className="h-10 -mt-1 -mx-1 mb-3 px-3 rounded-2xl bg-gradient-to-r from-yellow-300 via-amber-300 to-yellow-200 border border-yellow-400/70 flex items-center gap-2 shadow-[inset_0_-2px_0_rgba(245,158,11,0.18)]">
-                <div className="w-7 h-7 rounded-full bg-slate-950 text-yellow-300 flex items-center justify-center shadow-sm shrink-0">
-                  <UserCheck className="w-3.5 h-3.5 text-amber-600" />
-                </div>
-                <span className="text-[11px] font-mono font-black text-slate-950 uppercase tracking-[0.16em]">
-                  Scholar Banner
-                </span>
-              </div>
-
               <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-200/90">
-                <div className="min-w-0">
+                <div className="min-w-0 flex items-center gap-2.5">
+                  <div className="w-11 h-11 rounded-full bg-gradient-to-br from-yellow-300 to-amber-500 border-2 border-white shadow-[0_4px_14px_rgba(245,158,11,0.35)] flex items-center justify-center shrink-0">
+                    <UserCheck className="w-6 h-6 text-slate-950" strokeWidth={2.4} />
+                  </div>
+                  <div className="min-w-0">
                   <div className="text-[9px] font-mono font-bold text-amber-700 uppercase tracking-wider">
                     Scholar Profile
                   </div>
                   <div className="text-base font-display font-black text-slate-900 leading-tight mt-0.5 group-hover/profile:text-amber-700 transition-colors truncate">
                     {isLoggedIn ? `@${studentName}` : 'Guest Student'}
+                  </div>
                   </div>
                 </div>
                 <button
