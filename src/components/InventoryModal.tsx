@@ -457,7 +457,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
               </label>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-4 space-y-3">
+            <form onSubmit={handleSubmit} className="p-4 space-y-2.5">
               <div className="flex gap-1.5">
                 <button
                   type="button"
@@ -520,7 +520,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                 <label className="block text-[10px] font-bold text-slate-700 mb-1">PDF / Lecture Notes *</label>
                 <textarea
                   required
-                  rows={5}
+                  rows={4}
                   value={notes}
                   onChange={(event) => setNotes(event.target.value)}
                   placeholder="Paste notes here..."
@@ -566,32 +566,19 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                 )}
               </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-2.5 px-3 rounded-lg bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500 hover:from-yellow-200 hover:to-amber-400 text-slate-950 font-display font-black text-[10px] shadow-md transition-all disabled:opacity-50 cursor-pointer"
-              >
-                {loading
-                  ? 'Generating...'
-                  : startBattleAfter
-                  ? 'Save Deck & Launch Battle'
-                  : 'Save to Inventory'}
-              </button>
-
-              {startBattleAfter && onStartBattle && (
+              <div className="sticky bottom-0 z-10 pt-2 pb-1 bg-slate-50/95 backdrop-blur-sm">
                 <button
-                  type="button"
-                  onClick={() => {
-                    const durationSec = getBattleDurationSec();
-                    if (durationSec === null) return;
-                    onStartBattle(durationSec);
-                    onClose();
-                  }}
-                  className="w-full py-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-yellow-300 font-display font-black text-[10px] cursor-pointer"
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3 px-3 rounded-lg bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500 hover:from-yellow-200 hover:to-amber-400 text-slate-950 font-display font-black text-[10px] shadow-md transition-all disabled:opacity-50 cursor-pointer"
                 >
-                  START WITHOUT SAVING
+                  {loading
+                    ? 'Generating...'
+                    : startBattleAfter
+                    ? 'Save Deck & Launch Battle'
+                    : 'Save to Inventory'}
                 </button>
-              )}
+              </div>
             </form>
           </aside>
         </div>
