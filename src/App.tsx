@@ -1063,7 +1063,7 @@ export default function App() {
         classmates={classmates}
         localPlayerId={localPlayerId}
         joinError={roomJoinError}
-        onInviteUsername={(username) => handleSendInviteUsername(username, selectedMode)}
+        onInvitePlayer={(username) => handleSendInviteUsername(username, selectedMode)}
         activeDeck={activeDeck}
         onSyncDeckToRoom={handleSyncDeckToRoom}
         onStartQuizTogether={(mode) => handleRequestStartBattle(mode)}

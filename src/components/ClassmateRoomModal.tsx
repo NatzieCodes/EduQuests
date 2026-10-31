@@ -134,10 +134,10 @@ export const ClassmateRoomModal: React.FC<ClassmateRoomModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/75 p-3 backdrop-blur-sm sm:p-6" onMouseDown={(event) => {
+    <div className="fixed inset-0 z-[120] flex items-center justify-center pointer-events-auto bg-slate-950/75 p-3 backdrop-blur-sm sm:p-6" onMouseDown={(event) => {
       if (event.target === event.currentTarget) onClose();
     }}>
-      <div className="flex h-[min(820px,92vh)] w-full max-w-6xl flex-col overflow-hidden rounded-[24px] border-4 border-white bg-white shadow-2xl">
+      <div className="flex h-[min(820px,92vh)] w-full max-w-6xl flex-col overflow-hidden rounded-[24px] border-4 border-white bg-white shadow-2xl select-text">
         <div className="flex items-center justify-between bg-slate-900 px-5 py-4 text-white sm:px-7">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.25em] text-amber-400">EduQuests</p>

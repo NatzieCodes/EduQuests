@@ -13,6 +13,14 @@
     overflow: hidden;
   }
 
+  input,
+  textarea,
+  [contenteditable="true"] {
+    pointer-events: auto;
+    user-select: text;
+    -webkit-user-select: text;
+  }
+
   h1, h2, h3, .font-display {
     font-family: var(--font-display);
   }

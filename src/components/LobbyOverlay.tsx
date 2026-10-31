@@ -76,6 +76,8 @@ export interface LobbyChatMessage {
   };
 }
 
+export type LobbyAttachment = NonNullable<LobbyChatMessage['attachment']>;
+
 interface LobbyOverlayProps {
   studentName: string;
   blockSection: string;
