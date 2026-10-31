@@ -1,0 +1,6 @@
+{
+  "name": "EduQuests",
+  "description": "Interactive 3D Pokémon GO and Venge-style AI quiz battle arena where classmates team up for Raid Battles, PvP Duels, Team Fights, and Solo Training powered by Gemini study note generation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
