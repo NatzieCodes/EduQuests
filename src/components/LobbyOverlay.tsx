@@ -711,9 +711,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
 
               {/* Chat Drawer Header with Mic & Video Call Toggles */}
               <div className="px-3.5 py-2 border-b border-white/15 bg-white/5 flex items-center justify-between gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => handleOpenVideoChat()}
+                <div
                   className="min-w-0 flex-1 text-left rounded-xl cursor-pointer hover:bg-yellow-400/10 focus:outline-none focus:ring-2 focus:ring-yellow-400/60 px-1 py-0.5 transition-colors"
                 >
                   <div className="text-[10px] font-display font-extrabold text-yellow-300 uppercase tracking-wider truncate">
@@ -722,7 +720,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                   <div className="text-[11px] font-bold text-white/90 truncate">
                     {micEnabled ? 'Mic Active' : 'Mic Muted'} · {videoEnabled ? 'Camera On (Tap Video)' : 'Camera Off'}
                   </div>
-                </button>
+                </div>
 
                 <div className="flex items-center gap-1.5 shrink-0">
                   <button
@@ -742,13 +740,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                   <button
                     type="button"
                     data-testid="chat-video-toggle"
-                    onClick={() => {
-                      setVideoEnabled((prev) => {
-                        const next = !prev;
-                        if (!next) setExpandedVideoPeerId(null);
-                        return next;
-                      });
-                    }}
+                    onClick={() => setVideoEnabled((prev) => !prev)}
                     aria-label={videoEnabled ? 'Turn Off Video Call' : 'Turn On Video Call'}
                     className={`p-2 rounded-full border text-xs font-bold flex items-center justify-center transition-all cursor-pointer ${
                       videoEnabled
@@ -773,7 +765,6 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                 onClick={(event) => {
                   const target = event.target as HTMLElement;
                   if (target.closest('button, input, form, a')) return;
-                  handleOpenVideoChat();
                 }}
               >
                 {chatMessages.length === 0 ? (
@@ -2075,7 +2066,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
           Left Side: Users' Videos in a Bigger Version (Real Webcam for Local Player)
           Right Side: Live Room Chat Box
          ===================================================================== */}
-      {videoEnabled && expandedVideoPeerId !== null && selectedVideoPeer && (
+      {expandedVideoPeerId !== null && selectedVideoPeer && (
         <div
           data-testid="video-chat-popup-modal"
           className="fixed inset-0 z-40 pointer-events-auto flex items-center justify-center p-4 md:p-6 bg-slate-950/75 backdrop-blur-md"
@@ -2282,6 +2273,15 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                       </button>
                     </div>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => onSelectMode('pvp')}
+                    className="mb-2 h-9 w-full rounded-lg border border-yellow-400 bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500 text-slate-950 text-xs font-display font-black flex items-center justify-center gap-2 shadow-sm transition-all hover:from-yellow-200 hover:to-amber-300 cursor-pointer"
+                    aria-label="Select 1v1 PvP battle mode"
+                  >
+                    <Swords className="w-4 h-4" />
+                    <span>PVP BATTLE</span>
+                  </button>
                   <div className="mb-2 grid grid-cols-5 gap-1.5 w-full">
                     {[
                       { type: 'photo' as const, label: 'Photo', icon: ImageIcon, color: 'text-yellow-600' },
