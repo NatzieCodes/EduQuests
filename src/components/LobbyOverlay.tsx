@@ -640,7 +640,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
           {isJoinedInRoom && (
             <div
               data-testid="profile-top-chat-drawer"
-              className="group/room-chat w-full min-h-[260px] rounded-3xl bg-slate-950/35 text-white border border-white/25 shadow-[0_8px_32px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col cursor-pointer hover:border-yellow-400/70 hover:bg-gradient-to-br hover:from-slate-950/45 hover:via-slate-900/40 hover:to-amber-950/35 hover:ring-4 hover:ring-yellow-400/15 active:scale-[0.995] transition-all duration-200"
+              className="group/room-chat w-full min-h-[420px] rounded-3xl bg-slate-950/35 text-white border border-white/25 shadow-[0_8px_32px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col cursor-pointer hover:border-yellow-400/70 hover:bg-gradient-to-br hover:from-slate-950/45 hover:via-slate-900/40 hover:to-amber-950/35 hover:ring-4 hover:ring-yellow-400/15 active:scale-[0.995] transition-all duration-200"
               onClick={(event) => {
                 const target = event.target as HTMLElement;
                 if (target.closest('button, input, form, a')) return;
@@ -659,7 +659,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                     </span>
                   </div>
                   <div className="grid grid-flow-col auto-cols-[minmax(76px,1fr)] gap-1.5 overflow-x-auto drawer-scroll pb-0.5">
-                    {activeVideoPeers.map((peer) => {
+                    {activeVideoPeers.slice(0, 6).map((peer) => {
                       const isSelf = peer.id === localPlayerId || peer.id === 'local-player';
                       return (
                         <button
@@ -697,6 +697,24 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                         </button>
                       );
                     })}
+                    {Array.from({ length: Math.max(0, 6 - Math.min(activeVideoPeers.length, 6)) }).map((_, index) => (
+                      <div
+                        key={`empty-camera-${index}`}
+                        className="relative min-h-[160px] rounded-2xl bg-slate-950 border border-slate-700/80 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04),0_8px_18px_rgba(15,23,42,0.18)] overflow-hidden flex items-center justify-center"
+                      >
+                        <div className="text-slate-600 font-display font-black text-sm uppercase tracking-widest">
+                          Camera Open
+                        </div>
+                        <div className="absolute left-3 bottom-3 flex gap-1.5">
+                          <span className="w-8 h-8 rounded-full bg-slate-800 border border-slate-600 text-slate-400 flex items-center justify-center">
+                            <MicOff className="w-3.5 h-3.5" />
+                          </span>
+                          <span className="w-8 h-8 rounded-full bg-slate-800 border border-slate-600 text-slate-400 flex items-center justify-center">
+                            <VideoOff className="w-3.5 h-3.5" />
+                          </span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
@@ -761,7 +779,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
 
               {/* Scrollable Transparent Messages Container */}
               <div
-                className="px-3.5 py-2.5 min-h-[150px] max-h-[240px] flex-1 overflow-y-auto drawer-scroll space-y-2 bg-transparent"
+                className="px-3.5 py-3 min-h-[300px] flex-1 overflow-y-auto drawer-scroll space-y-2 bg-transparent"
                 onClick={(event) => {
                   const target = event.target as HTMLElement;
                   if (target.closest('button, input, form, a')) return;
@@ -2118,164 +2136,71 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
           aria-modal="true"
           aria-labelledby="video-chat-popup-title"
         >
-          <div className="w-full max-w-[1500px] h-[92vh] max-h-[900px] rounded-3xl bg-white text-slate-900 border border-slate-200 shadow-[0_24px_70px_rgba(0,0,0,0.45)] overflow-hidden flex flex-col">
-            {/* Pop-Up Top Bar */}
-            <div className="px-6 py-3.5 border-b border-slate-800 bg-slate-900 text-white flex items-center justify-between gap-3 shrink-0">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-2xl bg-gradient-to-tr from-yellow-300 via-amber-400 to-yellow-500 text-slate-950 flex items-center justify-center shadow-sm">
-                  <Video className="w-4 h-4" />
-                </div>
-                <div>
-                  <h2
-                    id="video-chat-popup-title"
-                    className="text-base md:text-lg font-display font-black text-white leading-tight"
-                  >
-                    Room #{roomCode} Live Video &amp; Chat
-                  </h2>
-                  <p className="text-xs text-slate-300 font-mono">
-                    Spotlight: @{selectedVideoPeer.name} ({selectedVideoPeer.blockSection}) · {activeVideoPeers.length} Connected
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setMicEnabled((prev) => !prev)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-display font-bold flex items-center gap-1.5 border transition-colors cursor-pointer ${
-                    micEnabled
-                      ? 'bg-yellow-400 text-slate-950 border-amber-500'
-                      : 'bg-slate-800 text-slate-300 border-slate-700'
-                  }`}
-                >
-                  {micEnabled ? <Mic className="w-3.5 h-3.5" /> : <MicOff className="w-3.5 h-3.5" />}
-                  <span>{micEnabled ? 'Mic On' : 'Muted'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setVideoEnabled(false);
-                    setExpandedVideoPeerId(null);
-                  }}
-                  className="px-3 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-400/40 text-xs font-display font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <VideoOff className="w-3.5 h-3.5" />
-                  <span>Turn Off Camera</span>
-                </button>
-
-                <button
-                  type="button"
-                  data-testid="close-video-popup-btn"
-                  onClick={() => setExpandedVideoPeerId(null)}
-                  aria-label="Close Video & Chat Pop-Up"
-                  className="w-8 h-8 rounded-full bg-rose-500 hover:bg-rose-400 text-white flex items-center justify-center shadow-sm transition-colors cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
+          <div className="relative w-full max-w-[1500px] h-[92vh] max-h-[900px] rounded-2xl bg-slate-300 text-slate-900 border border-slate-400/70 shadow-[0_24px_70px_rgba(0,0,0,0.45)] overflow-hidden flex flex-col">
+            <button
+              type="button"
+              data-testid="close-video-popup-btn"
+              onClick={() => setExpandedVideoPeerId(null)}
+              aria-label="Close Video & Chat Pop-Up"
+              className="absolute top-3 right-3 z-50 w-10 h-10 rounded-full bg-red-500 hover:bg-red-400 text-white flex items-center justify-center shadow-lg transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
 
             {/* Split Content: Left = Bigger User Videos, Right = Room Chat Box */}
             <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-12 overflow-hidden">
               {/* LEFT SIDE: BIGGER VERSION OF ROOM USERS' VIDEOS */}
               <div
                 data-testid="popup-left-videos"
-                className="md:col-span-8 bg-slate-950 text-white p-4 md:p-5 flex flex-col gap-3 overflow-y-auto drawer-scroll border-b md:border-b-0 md:border-r border-slate-800"
+                className="md:col-span-8 bg-slate-300 text-white p-3 md:p-4 overflow-hidden border-b md:border-b-0 md:border-r border-slate-400/70"
               >
-                {/* Featured Large Video Feed */}
-                <div
-                  data-testid="popup-featured-video"
-                  className="relative flex-[3] min-h-[360px] rounded-2xl bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 border-2 border-yellow-400/70 shadow-[0_16px_40px_rgba(250,204,21,0.12)] overflow-hidden flex flex-col items-center justify-center p-6"
-                >
-                  {(selectedVideoPeer.id === localPlayerId || selectedVideoPeer.id === 'local-player') &&
-                    localMediaStream && (
-                      <video
-                        ref={localVideoRef}
-                        autoPlay
-                        playsInline
-                        muted
-                        className="absolute inset-0 w-full h-full object-cover"
-                      />
-                    )}
+                <div className="h-full grid grid-cols-2 grid-rows-3 gap-3">
+                  {activeVideoPeers.map((peer) => {
+                    const isSelf = peer.id === localPlayerId || peer.id === 'local-player';
+                    const hasLiveSelfVideo = isSelf && videoEnabled && localMediaStream;
+                    return (
+                      <div
+                        key={peer.id}
+                        data-testid={`popup-video-tile-${peer.id}`}
+                        className="relative min-h-[160px] rounded-2xl bg-slate-950 border border-slate-700/80 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04),0_8px_18px_rgba(15,23,42,0.18)] overflow-hidden flex items-center justify-center"
+                      >
+                        {hasLiveSelfVideo ? (
+                          <video
+                            autoPlay
+                            playsInline
+                            muted
+                            ref={(video) => {
+                              if (video) video.srcObject = localMediaStream;
+                            }}
+                            className="absolute inset-0 w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-[24%] aspect-square min-w-[58px] max-w-[92px] rounded-full bg-slate-800 border border-slate-700 text-yellow-300 font-display font-black text-2xl md:text-3xl flex items-center justify-center shadow-lg">
+                            {peer.name[0]}
+                          </div>
+                        )}
 
-                  <div className="absolute top-3 left-3 flex items-center gap-2 z-10">
-                    <span className="px-2.5 py-1 rounded-lg bg-yellow-400 text-slate-950 font-display font-black text-[10px] uppercase tracking-wider shadow-sm">
-                      LIVE CAMERA
-                    </span>
-                    <span className="px-2.5 py-1 rounded-lg bg-slate-950/80 border border-yellow-400/30 text-yellow-200 font-mono text-[10px]">
-                      {selectedVideoPeer.blockSection}
-                    </span>
-                  </div>
-
-                  {((selectedVideoPeer.id !== localPlayerId && selectedVideoPeer.id !== 'local-player') || !localMediaStream) && (
-                    <>
-                      <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-gradient-to-tr from-yellow-300 via-amber-400 to-yellow-500 text-slate-950 font-display font-black text-3xl flex items-center justify-center shadow-[0_0_36px_rgba(250,204,21,0.45)] border-4 border-slate-950 ring-2 ring-yellow-300/70">
-                        {selectedVideoPeer.name[0]}
-                      </div>
-                      <div className="mt-3 text-lg font-display font-black text-white tracking-wide">
-                        @{selectedVideoPeer.name}
-                      </div>
-                      <div className="text-xs font-mono text-yellow-200/90 mt-0.5">
-                        {selectedVideoPeer.id === localPlayerId || selectedVideoPeer.id === 'local-player'
-                          ? videoEnabled ? 'Your Camera Ready' : 'Your Camera Is Off'
-                          : `Waiting for @${selectedVideoPeer.name} camera`}
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {/* Grid of All Joined Room Users' Videos */}
-                <div className="shrink-0">
-                  <div className="text-[11px] font-display font-extrabold text-yellow-300 uppercase tracking-wider mb-2 flex items-center justify-between">
-                    <span>Room Cameras <span className="text-white/55">({activeVideoPeers.length})</span></span>
-                    <span className="text-[9px] font-mono text-white/55">Select a camera to pin</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2.5">
-                    {activeVideoPeers.map((peer) => {
-                      const isFocused = peer.id === selectedVideoPeer.id;
-                      const isSelf = peer.id === localPlayerId || peer.id === 'local-player';
-                      return (
-                        <button
-                          key={peer.id}
-                          type="button"
-                          data-testid={`popup-video-tile-${peer.id}`}
-                          onClick={() => setExpandedVideoPeerId(peer.id)}
-                          className={`min-h-[94px] rounded-2xl px-2 py-3 flex flex-col items-center justify-center relative overflow-hidden border transition-all text-center cursor-pointer ${
-                            isFocused
-                              ? 'bg-gradient-to-br from-amber-900/95 via-slate-900 to-yellow-900/90 border-yellow-400 ring-2 ring-yellow-400/35 shadow-[0_10px_24px_rgba(250,204,21,0.12)]'
-                              : 'bg-slate-900/95 hover:bg-slate-800 border-white/15 hover:border-yellow-400/60'
-                          }`}
-                        >
-                          {isSelf && localMediaStream ? (
-                            <video
-                              autoPlay
-                              playsInline
-                              muted
-                              ref={(video) => {
-                                if (video) video.srcObject = localMediaStream;
-                              }}
-                              className="w-12 h-12 rounded-xl object-cover border border-yellow-300 shadow-sm"
-                            />
-                          ) : (
-                            <div className={`w-11 h-11 rounded-full flex items-center justify-center font-display font-black text-base shadow-sm ${
-                              isFocused
-                                ? 'bg-yellow-400 text-slate-950'
-                                : 'bg-slate-800 text-yellow-300 border border-white/15'
+                        <div className="absolute left-3 bottom-3 right-3 flex items-end justify-between gap-2">
+                          <div className="min-w-0 px-2.5 py-1.5 rounded-lg bg-slate-950/78 border border-white/10 backdrop-blur-sm">
+                            <div className="text-sm font-display font-black text-white truncate">@{peer.name}</div>
+                            <div className="text-[9px] font-mono text-slate-300 truncate">{peer.blockSection}</div>
+                          </div>
+                          <div className="flex gap-1.5 shrink-0">
+                            <span className={`w-8 h-8 rounded-full flex items-center justify-center border shadow-md ${
+                              isSelf ? (micEnabled ? 'bg-yellow-400 text-slate-950 border-amber-300' : 'bg-slate-800 text-slate-300 border-slate-600') : 'bg-slate-800 text-slate-300 border-slate-600'
                             }`}>
-                              {peer.name[0]}
-                            </div>
-                          )}
-                          <span className="text-xs font-display font-bold text-white truncate max-w-full mt-1.5">
-                            @{peer.name}
-                          </span>
-                          <span className="text-[9px] font-mono text-yellow-200/80 truncate max-w-full">
-                            {isSelf ? 'MY CAMERA' : peer.blockSection}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                              {micEnabled && isSelf ? <Mic className="w-3.5 h-3.5" /> : <MicOff className="w-3.5 h-3.5" />}
+                            </span>
+                            <span className={`w-8 h-8 rounded-full flex items-center justify-center border shadow-md ${
+                              hasLiveSelfVideo ? 'bg-yellow-400 text-slate-950 border-amber-300' : 'bg-slate-800 text-slate-300 border-slate-600'
+                            }`}>
+                              {hasLiveSelfVideo ? <Video className="w-3.5 h-3.5" /> : <VideoOff className="w-3.5 h-3.5" />}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -2284,7 +2209,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                 data-testid="popup-right-chat"
                 className="md:col-span-4 bg-white flex flex-col min-h-0 overflow-hidden"
               >
-                <div className="px-4 py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between shrink-0">
+                <div className="px-4 py-3 pr-14 border-b border-slate-200 bg-slate-50 flex items-center justify-between shrink-0">
                   <div>
                     <div className="text-xs font-display font-black text-amber-700 uppercase tracking-wider">
                       Room #{roomCode} Chat Box
