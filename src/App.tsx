@@ -708,7 +708,7 @@ export default function App() {
   );
 
   const handleJoinRoomCode = useCallback(
-    (code: string, password?: string, modeOverride?: GameMode) => {
+    (code: string, password?: string) => {
       soundFX.playClick();
       setRoomJoinError(null);
       const cleanCode = code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
@@ -721,7 +721,7 @@ export default function App() {
             type: 'room:join',
             roomCode: cleanCode,
             password: password || undefined,
-            mode: modeOverride ?? selectedMode,
+            mode: selectedMode,
             topic: activeDeck.title,
             member,
           })
@@ -736,17 +736,6 @@ export default function App() {
       }
     },
     [buildLocalMember, selectedMode, activeDeck.title, showToast]
-  );
-
-  const handleJoinBattleRoom = useCallback(
-    (room: AvailableRoomItem) => {
-      if (room.mode) {
-        setSelectedMode(room.mode);
-      }
-      handleJoinRoomCode(room.code, undefined, room.mode);
-      showToast(`Joined ${room.name}. Waiting for the host to start.`);
-    },
-    [handleJoinRoomCode, showToast]
   );
 
   const handleLeaveRoom = useCallback(() => {
@@ -958,8 +947,6 @@ export default function App() {
           isJoinedInRoom={isJoinedInRoom}
           classmates={classmates}
           onlinePlayers={onlinePlayers}
-          availableRooms={availableRooms}
-          onJoinBattleRoom={handleJoinBattleRoom}
           chatMessages={chatMessages}
           onSendChatMessage={handleSendChatMessage}
           invitations={invitations}
@@ -1055,6 +1042,13 @@ export default function App() {
         onClose={() => {
           setAiModalOpen(false);
           setStartBattleAfterNotes(false);
+        }}
+        onLaunchDeck={(deck, durationSec) => {
+          setActiveDeck(deck);
+          setHasCustomNotes(true);
+          setAiModalOpen(false);
+          setStartBattleAfterNotes(false);
+          launchActualBattle(undefined, undefined, durationSec);
         }}
         onDeckCreated={handleDeckCreated}
       />
