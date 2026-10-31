@@ -958,10 +958,22 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
             className="group/profile w-full rounded-3xl bg-white/95 hover:bg-gradient-to-br hover:from-amber-50/95 hover:via-white hover:to-yellow-50/90 text-slate-900 border-2 border-slate-200/90 hover:border-yellow-400 hover:ring-4 hover:ring-yellow-400/25 p-4 shadow-[0_12px_40px_rgba(0,0,0,0.18)] hover:shadow-[0_20px_48px_rgba(250,204,21,0.38)] hover:-translate-y-1 active:translate-y-0 transition-all duration-200 relative overflow-hidden cursor-pointer"
             title="Open scholar profile"
           >
-            <div className="absolute top-0 right-0 px-3.5 py-1 bg-slate-900 group-hover/profile:bg-gradient-to-r group-hover/profile:from-yellow-300 group-hover/profile:via-amber-400 group-hover/profile:to-yellow-500 text-yellow-300 group-hover/profile:text-slate-950 font-display font-black text-[10px] tracking-widest rounded-bl-2xl uppercase shadow-sm flex items-center gap-1 transition-colors">
+            <div className="absolute top-0 right-[78px] px-3.5 py-1 bg-slate-900 group-hover/profile:bg-gradient-to-r group-hover/profile:from-yellow-300 group-hover/profile:via-amber-400 group-hover/profile:to-yellow-500 text-yellow-300 group-hover/profile:text-slate-950 font-display font-black text-[10px] tracking-widest rounded-bl-2xl uppercase shadow-sm flex items-center gap-1 transition-colors">
               <Trophy className="w-3 h-3" />
               <span>LV. 40 · SCHOLAR</span>
             </div>
+            <button
+              type="button"
+              data-testid="player-logout-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                onLogoutStudent();
+              }}
+              className="absolute top-0 right-0 h-8 px-2.5 rounded-bl-2xl bg-white hover:bg-rose-50 border-l border-b border-slate-200 hover:border-rose-300 text-slate-600 hover:text-rose-600 font-display font-bold text-[11px] flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer z-10"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Logout</span>
+            </button>
 
             <div className="w-full">
               <div className="min-w-0 pr-28 pb-3 border-b border-slate-200/90">
@@ -974,33 +986,18 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                 </div>
               </div>
 
-              <div className="mt-3 grid grid-cols-[1fr_auto] items-end gap-3">
-                <div className="min-w-0">
-                  <div className="flex items-center justify-between gap-2 mb-1">
-                    <span className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider">
-                      LV. 40 · 7 DAY STREAK
-                    </span>
-                    <span className="text-[10px] font-mono font-bold text-amber-700 tabular-nums whitespace-nowrap">
-                      240,500 / 500,000 XP
-                    </span>
-                  </div>
-                  <div className="h-2.5 rounded-full bg-slate-200 overflow-hidden">
-                    <div className="h-full w-[48%] rounded-full bg-gradient-to-r from-yellow-400 to-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.35)]" />
-                  </div>
+              <div className="mt-3 min-w-0">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider">
+                    LV. 40 · 7 DAY STREAK
+                  </span>
+                  <span className="text-[10px] font-mono font-bold text-amber-700 tabular-nums whitespace-nowrap">
+                    240,500 / 500,000 XP
+                  </span>
                 </div>
-
-                <button
-                  type="button"
-                  data-testid="player-logout-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onLogoutStudent();
-                  }}
-                  className="h-8 px-2.5 rounded-xl bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-300 text-slate-600 hover:text-rose-600 font-display font-bold text-[11px] flex items-center justify-center gap-1.5 transition-all hover:-translate-y-0.5 active:translate-y-0 whitespace-nowrap cursor-pointer"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  <span>Logout</span>
-                </button>
+                <div className="h-2.5 rounded-full bg-slate-200 overflow-hidden">
+                  <div className="h-full w-[48%] rounded-full bg-gradient-to-r from-yellow-400 to-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.35)]" />
+                </div>
               </div>
             </div>
           </div>
@@ -1164,8 +1161,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                 }}
                 className="w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500 hover:from-yellow-200 hover:to-amber-400 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99] text-slate-950 font-display font-black text-base tracking-wide flex items-center justify-center gap-2 shadow-[0_8px_24px_rgba(245,158,11,0.45)] hover:shadow-[0_12px_28px_rgba(245,158,11,0.6)] transition-all whitespace-nowrap cursor-pointer"
               >
-                <span>{hasCustomNotes ? 'PLAY NOW' : 'OPEN INVENTORY & PLAY'}</span>
-                <ChevronRight className="w-5 h-5 stroke-[2.5]" />
+                <span>START</span>
               </button>
             </div>
 
