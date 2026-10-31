@@ -646,7 +646,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
           {isJoinedInRoom && (
             <div
               data-testid="profile-top-chat-drawer"
-              className="group/room-chat w-full min-h-[260px] rounded-3xl bg-slate-950/35 text-white border border-white/25 shadow-[0_8px_32px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col cursor-pointer hover:border-yellow-400/70 hover:bg-gradient-to-br hover:from-slate-950/45 hover:via-slate-900/40 hover:to-amber-950/35 hover:ring-4 hover:ring-yellow-400/15 active:scale-[0.995] transition-all duration-200"
+              className="group/room-chat w-full min-h-[420px] rounded-3xl bg-slate-950/35 text-white border border-white/25 shadow-[0_8px_32px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col cursor-pointer hover:border-yellow-400/70 hover:bg-gradient-to-br hover:from-slate-950/45 hover:via-slate-900/40 hover:to-amber-950/35 hover:ring-4 hover:ring-yellow-400/15 active:scale-[0.995] transition-all duration-200"
               onClick={(event) => {
                 const target = event.target as HTMLElement;
                 if (target.closest('button, input, form, a')) return;
@@ -767,7 +767,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
 
               {/* Scrollable Transparent Messages Container */}
               <div
-                className="px-3.5 py-2.5 min-h-[150px] max-h-[240px] flex-1 overflow-y-auto drawer-scroll space-y-2 bg-transparent"
+                className="px-3.5 py-3 min-h-[300px] flex-1 overflow-y-auto drawer-scroll space-y-2 bg-transparent"
                 onClick={(event) => {
                   const target = event.target as HTMLElement;
                   if (target.closest('button, input, form, a')) return;
@@ -2161,19 +2161,22 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                     const isPinned = peer.id === selectedVideoPeer?.id;
                     const hasLiveSelfVideo = isSelf && videoEnabled && localMediaStream;
                     return (
-                      <button
+                      <div
                         key={peer.id}
-                        type="button"
                         data-testid={`popup-video-tile-${peer.id}`}
-                        onClick={() => setExpandedVideoPeerId(peer.id)}
-                        aria-label={`Pin ${peer.name}'s camera`}
-                        aria-pressed={isPinned}
                         className={`relative min-h-0 rounded-xl bg-slate-950 border overflow-hidden text-center cursor-pointer transition-all duration-200 ${
                           isPinned
                             ? 'border-violet-400 ring-2 ring-violet-400/50 shadow-[0_12px_28px_rgba(139,92,246,0.22)]'
                             : 'border-slate-700 hover:border-yellow-400/80 hover:-translate-y-0.5'
                         } ${sortedPopupVideoPeers.length === 3 && index === 0 ? 'col-span-2' : ''}`}
                       >
+                        <button
+                          type="button"
+                          onClick={() => setExpandedVideoPeerId(peer.id)}
+                          aria-label={`Pin ${peer.name}'s camera`}
+                          aria-pressed={isPinned}
+                          className="absolute inset-0 w-full h-full cursor-pointer"
+                        />
                         {hasLiveSelfVideo ? (
                           <video
                             autoPlay
@@ -2197,90 +2200,45 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                             Pinned
                           </span>
                         )}
-                      </button>
+                        <div className="absolute right-3 bottom-3 z-20 flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            data-testid={`popup-mic-toggle-${peer.id}`}
+                            onClick={() => setMicEnabled((prev) => !prev)}
+                            aria-label={micEnabled ? `Mute Microphone for ${peer.name}` : `Unmute Microphone for ${peer.name}`}
+                            className={`w-9 h-9 rounded-full border flex items-center justify-center shadow-lg transition-all cursor-pointer ${
+                              micEnabled
+                                ? 'bg-yellow-400 text-slate-950 border-yellow-200'
+                                : 'bg-slate-950/90 text-white border-slate-600 hover:bg-slate-800'
+                            }`}
+                          >
+                            {micEnabled ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
+                          </button>
+                          <button
+                            type="button"
+                            data-testid={`popup-video-toggle-${peer.id}`}
+                            onClick={() => {
+                              setVideoEnabled((prev) => {
+                                const next = !prev;
+                                if (!next) setExpandedVideoPeerId(null);
+                                return next;
+                              });
+                            }}
+                            aria-label={videoEnabled ? `Turn Off Camera for ${peer.name}` : `Turn On Camera for ${peer.name}`}
+                            className={`w-9 h-9 rounded-full border flex items-center justify-center shadow-lg transition-all cursor-pointer ${
+                              videoEnabled
+                                ? 'bg-amber-400 text-slate-950 border-yellow-200'
+                                : 'bg-slate-950/90 text-white border-slate-600 hover:bg-slate-800'
+                            }`}
+                          >
+                            {videoEnabled ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
 
-                <div className="rounded-xl bg-slate-950 border border-slate-700/80 px-2.5 py-2 shrink-0">
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <span className="text-[9px] font-mono uppercase tracking-wider text-slate-400">Camera Controls</span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        data-testid="popup-mic-toggle"
-                        onClick={() => setMicEnabled((prev) => !prev)}
-                        aria-label={micEnabled ? 'Mute Microphone' : 'Unmute Microphone'}
-                        aria-pressed={micEnabled}
-                        className={`w-9 h-9 rounded-full border flex items-center justify-center shadow-md transition-all cursor-pointer ${
-                          micEnabled
-                            ? 'bg-yellow-400 text-slate-950 border-yellow-200'
-                            : 'bg-slate-800 text-white border-slate-600 hover:bg-slate-700'
-                        }`}
-                      >
-                        {micEnabled ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
-                      </button>
-                      <button
-                        type="button"
-                        data-testid="popup-video-toggle"
-                        onClick={() => {
-                          setVideoEnabled((prev) => {
-                            const next = !prev;
-                            if (!next) setExpandedVideoPeerId(null);
-                            return next;
-                          });
-                        }}
-                        aria-label={videoEnabled ? 'Turn Off Camera' : 'Turn On Camera'}
-                        aria-pressed={videoEnabled}
-                        className={`w-9 h-9 rounded-full border flex items-center justify-center shadow-md transition-all cursor-pointer ${
-                          videoEnabled
-                            ? 'bg-amber-400 text-slate-950 border-yellow-200'
-                            : 'bg-slate-800 text-white border-slate-600 hover:bg-slate-700'
-                        }`}
-                      >
-                        {videoEnabled ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-                  {activeAttachMenu === 'link' && (
-                    <div className="mb-2 flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={attachUrlInput}
-                        onChange={(event) => setAttachUrlInput(event.target.value)}
-                        placeholder="https://study-resource..."
-                        className="flex-1 h-9 px-3 rounded-lg bg-slate-800 border border-slate-600 text-xs text-white placeholder:text-slate-400 focus:outline-none focus:border-yellow-400"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleQuickShareAttachment('link')}
-                        className="h-9 px-3 rounded-lg bg-yellow-400 text-slate-950 font-display font-black text-xs cursor-pointer"
-                      >
-                        Attach
-                      </button>
-                    </div>
-                  )}
-                  <div className="grid grid-cols-5 gap-2">
-                    {[
-                      { type: 'photo' as const, label: 'Photo', icon: ImageIcon, color: 'text-yellow-300' },
-                      { type: 'video' as const, label: 'Video', icon: Film, color: 'text-amber-300' },
-                      { type: 'link' as const, label: 'Link', icon: Link2, color: 'text-yellow-200' },
-                      { type: 'pdf' as const, label: 'PDF', icon: FileText, color: 'text-rose-300' },
-                      { type: 'notes' as const, label: 'Notes', icon: BookOpen, color: 'text-amber-300' },
-                    ].map(({ type, label, icon: Icon, color }) => (
-                      <button
-                        key={type}
-                        type="button"
-                        onClick={() => handleQuickShareAttachment(type)}
-                        className="h-10 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 hover:border-yellow-400/70 text-white text-xs font-display font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                        title={`Share ${label}`}
-                      >
-                        <Icon className={`w-4 h-4 ${color}`} />
-                        <span>{label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
               </div>
 
               {/* RIGHT SIDE: INTERACTIVE ROOM CHAT BOX */}
@@ -2341,24 +2299,64 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                 {/* Pop-Up Chat Input Form */}
                 <form
                   onSubmit={handleSendChatSubmit}
-                  className="px-4 pb-3.5 pt-2 border-t border-slate-200 bg-white flex items-center gap-2 shrink-0"
+                  className="px-4 pb-3.5 pt-2 border-t border-slate-200 bg-white shrink-0"
                 >
-                  <input
-                    type="text"
-                    data-testid="popup-chat-input"
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    placeholder="Type a message to the room..."
-                    className="flex-1 px-3.5 py-2 rounded-full bg-slate-100 border border-slate-300 text-xs text-slate-900 focus:outline-none focus:border-amber-500"
-                  />
-                  <button
-                    type="submit"
-                    data-testid="popup-chat-send-btn"
-                    className="px-4 py-2 rounded-full bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500 hover:from-yellow-200 hover:to-amber-400 text-slate-950 font-display font-black text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                    <span>Send</span>
-                  </button>
+                  {activeAttachMenu === 'link' && (
+                    <div className="mb-2 flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={attachUrlInput}
+                        onChange={(event) => setAttachUrlInput(event.target.value)}
+                        placeholder="https://study-resource..."
+                        className="flex-1 h-9 px-3 rounded-lg bg-slate-100 border border-slate-300 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleQuickShareAttachment('link')}
+                        className="h-9 px-3 rounded-lg bg-amber-400 text-slate-950 font-display font-black text-xs cursor-pointer"
+                      >
+                        Attach
+                      </button>
+                    </div>
+                  )}
+                  <div className="mb-2 flex items-center gap-1.5 overflow-x-auto">
+                    {[
+                      { type: 'photo' as const, label: 'Photo', icon: ImageIcon, color: 'text-yellow-600' },
+                      { type: 'video' as const, label: 'Video', icon: Film, color: 'text-amber-600' },
+                      { type: 'link' as const, label: 'Link', icon: Link2, color: 'text-slate-600' },
+                      { type: 'pdf' as const, label: 'PDF', icon: FileText, color: 'text-rose-600' },
+                      { type: 'notes' as const, label: 'Notes', icon: BookOpen, color: 'text-amber-700' },
+                    ].map(({ type, label, icon: Icon, color }) => (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => handleQuickShareAttachment(type)}
+                        className="h-8 px-2.5 rounded-lg bg-white hover:bg-amber-50 border border-slate-300 hover:border-amber-400 text-slate-700 text-[11px] font-display font-bold flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer"
+                        title={`Share ${label}`}
+                      >
+                        <Icon className={`w-3.5 h-3.5 ${color}`} />
+                        <span>{label}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      data-testid="popup-chat-input"
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      placeholder="Type a message to the room..."
+                      className="flex-1 px-3.5 py-2 rounded-full bg-slate-100 border border-slate-300 text-xs text-slate-900 focus:outline-none focus:border-amber-500"
+                    />
+                    <button
+                      type="submit"
+                      data-testid="popup-chat-send-btn"
+                      className="px-4 py-2 rounded-full bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500 hover:from-yellow-200 hover:to-amber-400 text-slate-950 font-display font-black text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Send</span>
+                    </button>
+                  </div>
                 </form>
               </div>
             </div>
