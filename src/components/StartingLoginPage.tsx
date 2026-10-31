@@ -191,8 +191,9 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
     let lastTime = performance.now();
     let lastCommit = 0;
     const total = GAME_PREVIEWS.length;
-    // Slow-motion continuous speed: ~0.18 cards per second
-    const slowMotionSpeed = 0.18;
+    // One calm, constant speed for automatic movement and card selection.
+    const slowMotionSpeed = 0.055;
+    const selectedCardSpeed = 0.12;
 
     const tick = (now: number) => {
       const dt = Math.min(0.06, Math.max(0, (now - lastTime) / 1000));
@@ -209,7 +210,8 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
           phaseRef.current = ((target % total) + total) % total;
           targetIndexRef.current = null;
         } else {
-          phaseRef.current = (((phaseRef.current + diff * Math.min(1, dt * 6.5)) % total) + total) % total;
+          const step = Math.sign(diff) * Math.min(Math.abs(diff), selectedCardSpeed * dt);
+          phaseRef.current = (((phaseRef.current + step) % total) + total) % total;
         }
       } else if (now >= pauseUntilRef.current) {
         // Automatic slow-motion circular movement (cards move top -> middle -> bottom)
@@ -285,14 +287,14 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
           Login Section sits slightly toward the middle-left;
           Sliding Circular Previews are shifted to the right
          ===================================================================== */}
-      <div className="relative z-20 w-full max-w-[1400px] mx-auto h-full flex flex-col lg:flex-row items-center justify-between gap-8 lg:gap-12 px-5 sm:px-10 lg:px-14 xl:px-16 py-6">
+      <div className="relative z-20 w-full max-w-[1400px] mx-auto h-full grid grid-cols-1 lg:grid-cols-2 items-center gap-8 lg:gap-4 px-5 sm:px-10 lg:px-14 xl:px-16 py-6">
         {/* ===================================================================
             LEFT / CENTER-LEFT COLUMN: HCI-OPTIMIZED LOGIN & REGISTRATION CARD
            =================================================================== */}
         <section
           data-testid="starting-login-card"
           aria-label="Scholar Login and Registration"
-          className="relative z-20 w-full max-w-[460px] lg:w-[460px] xl:w-[475px] rounded-[28px] bg-white/95 text-slate-900 border border-slate-200/90 shadow-[0_24px_64px_rgba(15,23,42,0.5)] p-6 sm:p-8 flex flex-col gap-5 shrink-0 lg:ml-6 xl:ml-10"
+          className="relative z-20 justify-self-center w-full max-w-[460px] lg:w-[460px] xl:w-[475px] rounded-[28px] bg-white/95 text-slate-900 border border-slate-200/90 shadow-[0_24px_64px_rgba(15,23,42,0.5)] p-6 sm:p-8 flex flex-col gap-5 shrink-0"
         >
           {/* Brand Logo Lockup */}
           <div className="flex flex-col items-center text-center pb-3 border-b border-slate-200/80">
@@ -498,7 +500,7 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
         <section
           data-testid="circular-game-preview"
           aria-label="Game Preview Carousel"
-          className="relative z-20 flex-1 w-full h-[640px] lg:h-full flex items-center justify-end select-none lg:pr-4 xl:pr-8"
+          className="relative z-20 w-full h-[640px] lg:h-full flex items-center justify-center select-none lg:pr-0 xl:pr-2"
         >
           <div className="relative w-full max-w-[680px] h-full flex items-center justify-center">
             {GAME_PREVIEWS.map((item, index) => {
@@ -519,7 +521,7 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
                     pointerEvents: isVisible ? 'auto' : 'none',
                   }}
                   title={`Click anywhere on this card to maximize ${item.title}`}
-                  className={`group/preview absolute w-[330px] sm:w-[500px] lg:w-[560px] xl:w-[600px] h-[220px] sm:h-[295px] lg:h-[330px] rounded-3xl bg-white/95 hover:bg-gradient-to-br hover:from-amber-50/95 hover:via-white hover:to-yellow-50/90 text-slate-900 p-4 border-2 cursor-pointer overflow-hidden will-change-transform transition-colors duration-200 ${
+                  className={`group/preview absolute w-[330px] sm:w-[500px] lg:w-[620px] xl:w-[680px] h-[220px] sm:h-[295px] lg:h-[360px] xl:h-[390px] rounded-3xl bg-white/95 hover:bg-gradient-to-br hover:from-amber-50/95 hover:via-white hover:to-yellow-50/90 text-slate-900 p-4 border-2 cursor-pointer overflow-hidden will-change-transform transition-colors duration-200 ${
                     isMiddleMaximized
                       ? 'border-yellow-400 ring-4 ring-yellow-400/30 shadow-[0_24px_65px_rgba(0,0,0,0.6)] hover:shadow-[0_24px_68px_rgba(250,204,21,0.45)]'
                       : 'border-slate-200/90 hover:border-yellow-400 hover:ring-4 hover:ring-yellow-400/25 shadow-[0_12px_40px_rgba(0,0,0,0.35)] hover:shadow-[0_20px_48px_rgba(250,204,21,0.38)]'
