@@ -191,9 +191,9 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
     let lastTime = performance.now();
     let lastCommit = 0;
     const total = GAME_PREVIEWS.length;
-    // One calm, constant speed for automatic movement and card selection.
-    const slowMotionSpeed = 0.055;
-    const selectedCardSpeed = 0.12;
+    // One very calm, constant speed for automatic movement and card selection.
+    const slowMotionSpeed = 0.0125;
+    const selectedCardSpeed = 0.0125;
 
     const tick = (now: number) => {
       const dt = Math.min(0.06, Math.max(0, (now - lastTime) / 1000));
@@ -287,17 +287,17 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
           Login Section sits slightly toward the middle-left;
           Sliding Circular Previews are shifted to the right
          ===================================================================== */}
-      <div className="relative z-20 w-full max-w-[1400px] mx-auto h-full grid grid-cols-1 lg:grid-cols-2 items-center gap-8 lg:gap-4 px-5 sm:px-10 lg:px-14 xl:px-16 py-6">
+      <div className="relative z-20 w-full max-w-[1400px] mx-auto h-full grid grid-cols-1 lg:grid-cols-2 items-center gap-6 lg:gap-6 px-5 sm:px-10 lg:px-14 xl:px-16 py-6">
         {/* ===================================================================
             LEFT / CENTER-LEFT COLUMN: HCI-OPTIMIZED LOGIN & REGISTRATION CARD
            =================================================================== */}
         <section
           data-testid="starting-login-card"
           aria-label="Scholar Login and Registration"
-          className="relative z-20 justify-self-center w-full max-w-[460px] lg:w-[460px] xl:w-[475px] rounded-[28px] bg-white/95 text-slate-900 border border-slate-200/90 shadow-[0_24px_64px_rgba(15,23,42,0.5)] p-6 sm:p-8 flex flex-col gap-5 shrink-0"
+          className="relative z-20 justify-self-center w-full max-w-[460px] lg:w-[460px] xl:w-[475px] rounded-[28px] bg-white/95 text-slate-900 border border-slate-200/90 shadow-[0_24px_64px_rgba(15,23,42,0.5)] p-6 sm:p-8 flex flex-col gap-4 shrink-0"
         >
           {/* Brand Logo Lockup */}
-          <div className="flex flex-col items-center text-center pb-3 border-b border-slate-200/80">
+          <div className="flex flex-col items-center text-center pb-4 border-b border-slate-200/80">
             <img
               src={`${import.meta.env.BASE_URL}assets/aistudio/image_d8bbdfa5.png`}
               alt="EduQuests"
@@ -314,7 +314,7 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
             className="rounded-2xl bg-slate-100/90 border border-slate-200/90 p-5 sm:p-6 flex flex-col gap-4"
           >
             {/* Clean Form Mode Header */}
-            <div className="flex items-center justify-between pb-1 border-b border-slate-200/80">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-200/80">
               <h1 className="font-display font-black text-base sm:text-lg tracking-wide uppercase text-slate-900">
                 {isRegisterMode ? 'Create Account' : 'Login'}
               </h1>
@@ -337,7 +337,7 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
             <div>
               <label
                 htmlFor="starting-username-input"
-                className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5"
+                className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2"
               >
                 Username
               </label>
@@ -354,7 +354,7 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
 
             {/* PASSWORD FIELD */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center justify-between mb-2">
                 <label
                   htmlFor="starting-password-input"
                   className="block text-xs font-bold uppercase tracking-wider text-slate-700"
@@ -394,7 +394,7 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
             )}
 
             {/* Primary & Secondary Action Buttons */}
-            <div className="grid grid-cols-12 gap-3 pt-1">
+            <div className="grid grid-cols-12 gap-4 pt-0">
               <button
                 type="button"
                 data-testid="starting-register-btn"
@@ -418,8 +418,8 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
           </form>
 
           {/* Alternative & Institutional SSO Row */}
-          <div className="pt-0.5">
-            <div className="relative flex items-center justify-center mb-3">
+          <div>
+            <div className="relative flex items-center justify-center mb-4">
               <div className="w-full border-t border-slate-200" />
               <span className="px-3 bg-white text-[11px] font-semibold uppercase tracking-wider text-slate-400 whitespace-nowrap">
                 Or continue with
@@ -427,7 +427,7 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
               <div className="w-full border-t border-slate-200" />
             </div>
 
-            <div className="grid grid-cols-4 gap-2.5">
+            <div className="grid grid-cols-4 gap-4">
               {/* GMAIL */}
               <button
                 type="button"
