@@ -640,7 +640,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
           {isJoinedInRoom && (
             <div
               data-testid="profile-top-chat-drawer"
-              className="group/room-chat w-full rounded-3xl bg-slate-950/35 text-white border border-white/25 shadow-[0_8px_32px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col cursor-pointer hover:border-yellow-400/70 hover:bg-gradient-to-br hover:from-slate-950/45 hover:via-slate-900/40 hover:to-amber-950/35 hover:ring-4 hover:ring-yellow-400/15 active:scale-[0.995] transition-all duration-200"
+              className="group/room-chat w-full min-h-[260px] rounded-3xl bg-slate-950/35 text-white border border-white/25 shadow-[0_8px_32px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col cursor-pointer hover:border-yellow-400/70 hover:bg-gradient-to-br hover:from-slate-950/45 hover:via-slate-900/40 hover:to-amber-950/35 hover:ring-4 hover:ring-yellow-400/15 active:scale-[0.995] transition-all duration-200"
               onClick={(event) => {
                 const target = event.target as HTMLElement;
                 if (target.closest('button, input, form, a')) return;
@@ -761,7 +761,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
 
               {/* Scrollable Transparent Messages Container */}
               <div
-                className="px-3.5 py-2.5 max-h-32 overflow-y-auto drawer-scroll space-y-2 bg-transparent"
+                className="px-3.5 py-2.5 min-h-[150px] max-h-[240px] flex-1 overflow-y-auto drawer-scroll space-y-2 bg-transparent"
                 onClick={(event) => {
                   const target = event.target as HTMLElement;
                   if (target.closest('button, input, form, a')) return;
@@ -2118,7 +2118,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
           aria-modal="true"
           aria-labelledby="video-chat-popup-title"
         >
-          <div className="w-full max-w-5xl h-[82vh] max-h-[680px] rounded-3xl bg-white text-slate-900 border border-slate-200 shadow-[0_24px_70px_rgba(0,0,0,0.45)] overflow-hidden flex flex-col">
+          <div className="w-full max-w-[1500px] h-[92vh] max-h-[900px] rounded-3xl bg-white text-slate-900 border border-slate-200 shadow-[0_24px_70px_rgba(0,0,0,0.45)] overflow-hidden flex flex-col">
             {/* Pop-Up Top Bar */}
             <div className="px-6 py-3.5 border-b border-slate-800 bg-slate-900 text-white flex items-center justify-between gap-3 shrink-0">
               <div className="flex items-center gap-2.5">
@@ -2181,12 +2181,12 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
               {/* LEFT SIDE: BIGGER VERSION OF ROOM USERS' VIDEOS */}
               <div
                 data-testid="popup-left-videos"
-                className="md:col-span-7 bg-slate-950 text-white p-4 md:p-5 flex flex-col gap-3 overflow-y-auto drawer-scroll border-b md:border-b-0 md:border-r border-slate-800"
+                className="md:col-span-8 bg-slate-950 text-white p-4 md:p-5 flex flex-col gap-3 overflow-y-auto drawer-scroll border-b md:border-b-0 md:border-r border-slate-800"
               >
                 {/* Featured Large Video Feed */}
                 <div
                   data-testid="popup-featured-video"
-                  className="relative flex-[2] min-h-[260px] rounded-2xl bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 border-2 border-yellow-400/70 shadow-[0_16px_40px_rgba(250,204,21,0.12)] overflow-hidden flex flex-col items-center justify-center p-6"
+                  className="relative flex-[3] min-h-[360px] rounded-2xl bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 border-2 border-yellow-400/70 shadow-[0_16px_40px_rgba(250,204,21,0.12)] overflow-hidden flex flex-col items-center justify-center p-6"
                 >
                   {(selectedVideoPeer.id === localPlayerId || selectedVideoPeer.id === 'local-player') &&
                     localMediaStream && (
@@ -2282,7 +2282,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
               {/* RIGHT SIDE: INTERACTIVE ROOM CHAT BOX */}
               <div
                 data-testid="popup-right-chat"
-                className="md:col-span-5 bg-white flex flex-col min-h-0 overflow-hidden"
+                className="md:col-span-4 bg-white flex flex-col min-h-0 overflow-hidden"
               >
                 <div className="px-4 py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between shrink-0">
                   <div>
