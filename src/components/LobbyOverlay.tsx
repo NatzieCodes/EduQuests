@@ -647,7 +647,12 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
           {isJoinedInRoom && (
             <div
               data-testid="profile-top-chat-drawer"
-              className="group/room-chat w-full min-h-[420px] rounded-3xl bg-slate-950/35 text-white border border-white/25 shadow-[0_8px_32px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col"
+              className="group/room-chat w-full min-h-[420px] rounded-3xl bg-slate-950/35 text-white border border-white/25 shadow-[0_8px_32px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col cursor-pointer hover:border-yellow-400/70 hover:bg-gradient-to-br hover:from-slate-950/45 hover:via-slate-900/40 hover:to-amber-950/35 hover:ring-4 hover:ring-yellow-400/15 active:scale-[0.995] transition-all duration-200"
+              onClick={(event) => {
+                const target = event.target as HTMLElement;
+                if (target.closest('button, input, form, a')) return;
+                handleOpenVideoChat();
+              }}
             >
               {/* When Camera is ON: Pressable Video Feeds of Joined Users at the VERY TOP of the Chat */}
               {(
@@ -705,14 +710,18 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
 
               {/* Chat Drawer Header with Mic & Video Call Toggles */}
               <div className="px-3.5 py-2 border-b border-white/15 bg-white/5 flex items-center justify-between gap-2 shrink-0">
-                <div className="min-w-0 flex-1 px-1 py-0.5">
+                <button
+                  type="button"
+                  onClick={() => handleOpenVideoChat()}
+                  className="min-w-0 flex-1 text-left rounded-xl cursor-pointer hover:bg-yellow-400/10 focus:outline-none focus:ring-2 focus:ring-yellow-400/60 px-1 py-0.5 transition-colors"
+                >
                   <div className="text-[10px] font-display font-extrabold text-yellow-300 uppercase tracking-wider truncate">
                     ROOM #{roomCode} CHAT · {squadMembers.length}/{MAX_ROOM_PLAYERS} SQUAD
                   </div>
                   <div className="text-[11px] font-bold text-white/90 truncate">
                     {micEnabled ? 'Mic Active' : 'Mic Muted'} · {videoEnabled ? 'Camera On (Tap Video)' : 'Camera Off'}
                   </div>
-                </div>
+                </button>
 
                 <div className="flex items-center gap-1.5 shrink-0">
                   <button
