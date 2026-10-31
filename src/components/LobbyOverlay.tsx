@@ -8,7 +8,7 @@ import {
   QuizDeck,
 } from '../game/rules';
 import { ProfileCharacter3D } from './ProfileCharacter3D';
-import { OnlinePlayerSummary } from './ClassmateRoomModal';
+import { AvailableRoomItem, OnlinePlayerSummary } from './ClassmateRoomModal';
 import {
   Volume2,
   VolumeX,
@@ -46,6 +46,7 @@ import {
   Swords,
   Download,
   Maximize2,
+  Lock,
 } from 'lucide-react';
 
 export interface BattleInvitation {
@@ -97,6 +98,8 @@ interface LobbyOverlayProps {
   isJoinedInRoom?: boolean;
   classmates: ClassmateMember[];
   onlinePlayers?: OnlinePlayerSummary[];
+  availableRooms?: AvailableRoomItem[];
+  onJoinBattleRoom?: (room: AvailableRoomItem) => void;
   chatMessages?: LobbyChatMessage[];
   onSendChatMessage?: (text: string, attachment?: LobbyChatMessage['attachment']) => void;
   invitations: BattleInvitation[];
@@ -198,6 +201,8 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
   isJoinedInRoom = false,
   classmates,
   onlinePlayers = [],
+  availableRooms = [],
+  onJoinBattleRoom,
   chatMessages = [],
   onSendChatMessage,
   invitations,
@@ -427,6 +432,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
   }, [localMediaStream, expandedVideoPeerId]);
 
   const currentMode = BATTLE_MODES[selectedMode];
+  const matchingBattleRooms = availableRooms.filter((room) => room.mode === selectedMode);
   const squadMembers = classmates.slice(0, MAX_ROOM_PLAYERS);
   const activeVideoPeers = squadMembers;
   const selectedVideoPeer =
@@ -1184,10 +1190,10 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
               </div>
               <div className="text-right">
                 <div className="text-[10px] font-mono font-bold text-slate-500 tracking-wider uppercase">
-                  ACTIVE TOPIC
+                  MATCHING ROOMS
                 </div>
                 <div className="text-xs font-bold text-amber-700 mt-0.5 truncate max-w-[140px]">
-                  {activeDeck.title}
+                  {matchingBattleRooms.length} available
                 </div>
               </div>
             </div>
@@ -1234,6 +1240,66 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
               </div>
             </div>
 
+            {/* Rooms that match the selected battle mode */}
+            <div className="mt-3">
+              <div className="mb-2 flex items-center justify-between">
+                <div className="text-[10px] font-mono font-black uppercase tracking-widest text-slate-500">
+                  {currentMode.shortTitle} rooms
+                </div>
+                <span className="text-[10px] font-mono font-bold text-amber-700">
+                  {matchingBattleRooms.length} available
+                </span>
+              </div>
+              <div className="max-h-[124px] space-y-1.5 overflow-y-auto drawer-scroll pr-1">
+                {matchingBattleRooms.map((room) => {
+                  const memberCount = room.memberCount ?? room.members.length;
+                  const isFull = memberCount >= 6;
+                  return (
+                    <button
+                      key={room.code}
+                      type="button"
+                      disabled={isFull}
+                      onClick={() => onJoinBattleRoom?.(room)}
+                      className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left transition-all hover:border-amber-400 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+                    >
+                      <div className="min-w-0">
+                        <div className="truncate text-xs font-display font-black text-slate-900">{room.name}</div>
+                        <div className="truncate text-[9px] font-mono text-slate-500">
+                          @{room.host} · {room.topic || 'Waiting for host setup'}
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        {room.isPrivate && <Lock className="h-3 w-3 text-slate-500" />}
+                        <span className="rounded-lg bg-slate-900 px-2 py-1 text-[9px] font-mono font-black text-yellow-300">
+                          {isFull ? 'FULL' : `${memberCount}/6`}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+                {matchingBattleRooms.length === 0 && (
+                  <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3 py-4 text-center text-[10px] font-mono font-bold text-slate-400">
+                    No {currentMode.shortTitle} rooms available
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Study file selection appears immediately before launch */}
+            <button
+              type="button"
+              onClick={() => onOpenInventoryModal(false)}
+              className="mt-3 flex w-full items-center justify-between rounded-xl border border-slate-300 bg-slate-100 px-3 py-2.5 text-left transition-all hover:border-amber-400 hover:bg-amber-50 cursor-pointer"
+            >
+              <span className="flex items-center gap-2 text-xs font-display font-black text-slate-800">
+                <FolderOpen className="h-4 w-4 text-amber-600" />
+                CHOOSE STUDY FILE
+              </span>
+              <span className="max-w-[150px] truncate text-[10px] font-mono font-bold text-slate-500">
+                {activeDeck.title}
+              </span>
+            </button>
+
             {/* TIER 2: Single Dominant Primary Action CTA */}
             <div className="mt-3">
               <button
@@ -1250,7 +1316,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
             </div>
 
             {/* TIER 3: Secondary Setup Drawers (Room & Inventory — Distinct Secondary Styling) */}
-            <div className="mt-3 pt-2.5 border-t border-slate-200/80 grid grid-cols-2 gap-2">
+            <div className="mt-3 pt-2.5 border-t border-slate-200/80">
               <button
                 type="button"
                 data-testid="open-room-btn"
@@ -1263,20 +1329,6 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                 </span>
                 <span className="text-[10px] font-mono text-yellow-300/90 shrink-0">
                   {isJoinedInRoom ? `#${roomCode}` : 'Join'}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onOpenInventoryModal(false)}
-                className="py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 hover:-translate-y-0.5 active:translate-y-0 border border-slate-300 text-slate-800 font-display font-extrabold text-xs flex items-center justify-between gap-1.5 transition-all cursor-pointer"
-              >
-                <span className="flex items-center gap-1.5 truncate">
-                  <FolderOpen className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                  <span>Inventory</span>
-                </span>
-                <span className="text-[10px] font-mono text-slate-500 shrink-0">
-                  {activeDeck.questions.length} Qs
                 </span>
               </button>
             </div>
