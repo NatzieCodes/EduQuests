@@ -785,8 +785,8 @@ export interface CircularPreviewTransform {
 }
 
 /**
- * Pure helper computing smooth circular slow-motion orbital coordinates for each game preview card.
- * `orbitPhase` is a continuous floating-point index in `[0, total)` that advances slowly over time.
+ * Pure helper computing smooth circular orbital coordinates for each game preview card.
+ * `orbitPhase` is a continuous floating-point index in `[0, total)` that advances over time.
  * Cards move strictly in one direction along the right-side circular arc; back-returning cards (`|offset| >= 1.48`)
  * are hidden (`opacity: 0, isVisible: false`) so no card is ever seen moving in reverse at the back.
  */

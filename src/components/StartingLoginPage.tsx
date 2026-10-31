@@ -178,22 +178,21 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
   const [isRegisterMode, setIsRegisterMode] = useState<boolean>(false);
   const [statusBanner, setStatusBanner] = useState<string | null>(null);
 
-  // Continuous slow-motion circular preview phase in [0, GAME_PREVIEWS.length)
+  // Continuous circular preview phase in [0, GAME_PREVIEWS.length)
   const [orbitPhase, setOrbitPhase] = useState<number>(0);
 
   const phaseRef = useRef<number>(0);
   const targetIndexRef = useRef<number | null>(null);
   const pauseUntilRef = useRef<number>(0);
 
-  // Automatic slow-motion circular animation loop
+  // Smooth automatic circular animation loop
   useEffect(() => {
     let rafId = 0;
     let lastTime = performance.now();
-    let lastCommit = 0;
     const total = GAME_PREVIEWS.length;
-    // One very calm, constant speed for automatic movement and card selection.
-    const slowMotionSpeed = 0.0125;
-    const selectedCardSpeed = 8;
+    // Balanced speed: noticeable continuous movement without frame jumps.
+    const orbitSpeed = 0.16;
+    const selectedCardSpeed = 10;
 
     const tick = (now: number) => {
       const dt = Math.min(0.06, Math.max(0, (now - lastTime) / 1000));
@@ -214,14 +213,11 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
           phaseRef.current = (((phaseRef.current + step) % total) + total) % total;
         }
       } else if (now >= pauseUntilRef.current) {
-        // Automatic slow-motion circular movement (cards move top -> middle -> bottom)
-        phaseRef.current = (((phaseRef.current - dt * slowMotionSpeed) % total) + total) % total;
+        // Continuous circular movement (cards move top -> middle -> bottom)
+        phaseRef.current = (((phaseRef.current - dt * orbitSpeed) % total) + total) % total;
       }
 
-      if (now - lastCommit >= 16) {
-        lastCommit = now;
-        setOrbitPhase(phaseRef.current);
-      }
+      setOrbitPhase(phaseRef.current);
 
       rafId = window.requestAnimationFrame(tick);
     };
@@ -268,7 +264,7 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
   const handlePressPreviewCard = (index: number) => {
     // Pressing any preview card smoothly moves it into the middle and maximizes it
     targetIndexRef.current = index;
-    pauseUntilRef.current = performance.now() + 5000;
+    pauseUntilRef.current = performance.now() + 2500;
   };
 
   return (
