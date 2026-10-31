@@ -427,6 +427,15 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
   const selectedVideoPeer =
     activeVideoPeers.find((p) => p.id === expandedVideoPeerId) || activeVideoPeers[0] || null;
 
+  const handleOpenVideoChat = (peerId?: string) => {
+    const targetPeer =
+      activeVideoPeers.find((peer) => peer.id === peerId) ||
+      activeVideoPeers.find((peer) => peer.id === localPlayerId) ||
+      activeVideoPeers[0];
+    setVideoEnabled(true);
+    if (targetPeer) setExpandedVideoPeerId(targetPeer.id);
+  };
+
   const handleOpenAuthModal = (mode: 'profile' | 'login' | 'register') => {
     setDraftName(isLoggedIn ? studentName : '');
     setDraftBlock(blockSection || 'BSCS-3A');
@@ -631,7 +640,12 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
           {isJoinedInRoom && (
             <div
               data-testid="profile-top-chat-drawer"
-              className="w-full rounded-3xl bg-slate-950/35 text-white border border-white/25 shadow-[0_8px_32px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col"
+              className="group/room-chat w-full rounded-3xl bg-slate-950/35 text-white border border-white/25 shadow-[0_8px_32px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col cursor-pointer hover:border-yellow-400/70 hover:bg-gradient-to-br hover:from-slate-950/45 hover:via-slate-900/40 hover:to-amber-950/35 hover:ring-4 hover:ring-yellow-400/15 active:scale-[0.995] transition-all duration-200"
+              onClick={(event) => {
+                const target = event.target as HTMLElement;
+                if (target.closest('button, input, form, a')) return;
+                handleOpenVideoChat();
+              }}
             >
               {/* When Camera is ON: Pressable Video Feeds of Joined Users at the VERY TOP of the Chat */}
               {videoEnabled && (
@@ -652,7 +666,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                           key={peer.id}
                           type="button"
                           data-testid={`chat-video-feed-${peer.id}`}
-                          onClick={() => setExpandedVideoPeerId(peer.id)}
+                          onClick={() => handleOpenVideoChat(peer.id)}
                           className="group relative rounded-xl bg-gradient-to-br from-slate-900/90 via-slate-800/85 to-amber-950/75 hover:from-amber-900/90 hover:to-yellow-900/80 border border-yellow-400/40 hover:border-yellow-300 p-1.5 flex flex-col items-center justify-center overflow-hidden transition-all shadow-sm hover:-translate-y-0.5 active:scale-95 text-left cursor-pointer"
                           title={`Press to open bigger video & chat for @${peer.name}`}
                         >
@@ -689,14 +703,18 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
 
               {/* Chat Drawer Header with Mic & Video Call Toggles */}
               <div className="px-3.5 py-2 border-b border-white/15 bg-white/5 flex items-center justify-between gap-2 shrink-0">
-                <div className="min-w-0">
+                <button
+                  type="button"
+                  onClick={() => handleOpenVideoChat()}
+                  className="min-w-0 flex-1 text-left rounded-xl cursor-pointer hover:bg-yellow-400/10 focus:outline-none focus:ring-2 focus:ring-yellow-400/60 px-1 py-0.5 transition-colors"
+                >
                   <div className="text-[10px] font-display font-extrabold text-yellow-300 uppercase tracking-wider truncate">
                     ROOM #{roomCode} CHAT · {squadMembers.length}/{MAX_ROOM_PLAYERS} SQUAD
                   </div>
                   <div className="text-[11px] font-bold text-white/90 truncate">
                     {micEnabled ? 'Mic Active' : 'Mic Muted'} · {videoEnabled ? 'Camera On (Tap Video)' : 'Camera Off'}
                   </div>
-                </div>
+                </button>
 
                 <div className="flex items-center gap-1.5 shrink-0">
                   <button
@@ -742,7 +760,14 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
               )}
 
               {/* Scrollable Transparent Messages Container */}
-              <div className="px-3.5 py-2.5 max-h-32 overflow-y-auto drawer-scroll space-y-2 bg-transparent">
+              <div
+                className="px-3.5 py-2.5 max-h-32 overflow-y-auto drawer-scroll space-y-2 bg-transparent"
+                onClick={(event) => {
+                  const target = event.target as HTMLElement;
+                  if (target.closest('button, input, form, a')) return;
+                  handleOpenVideoChat();
+                }}
+              >
                 {chatMessages.length === 0 ? (
                   <div className="py-3 text-center text-[11px] font-mono text-white/75">
                     Room #{roomCode} live chat ready. Send a message, link, or study file to your squad!
@@ -2206,7 +2231,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                     <span>Room Cameras <span className="text-white/55">({activeVideoPeers.length})</span></span>
                     <span className="text-[9px] font-mono text-white/55">Select a camera to pin</span>
                   </div>
-                  <div className="grid grid-cols-3 gap-2.5">
+                  <div className="grid grid-cols-2 gap-2.5">
                     {activeVideoPeers.map((peer) => {
                       const isFocused = peer.id === selectedVideoPeer.id;
                       const isSelf = peer.id === localPlayerId || peer.id === 'local-player';
