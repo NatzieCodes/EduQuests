@@ -308,11 +308,14 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
   const activeAccentObj = ACCENT_PRESETS.find((a) => a.id === accentColor) ?? ACCENT_PRESETS[0];
 
   // Room Chat & Real Webcam / Mic State
-  const [micEnabled, setMicEnabled] = useState<boolean>(true);
+  const [micEnabled, setMicEnabled] = useState<boolean>(false);
   const [videoEnabled, setVideoEnabled] = useState<boolean>(false);
   const [expandedVideoPeerId, setExpandedVideoPeerId] = useState<string | null>(null);
   const [localMediaStream, setLocalMediaStream] = useState<MediaStream | null>(null);
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
+  const microphoneStreamRef = useRef<MediaStream | null>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
+  const [mediaPermissionError, setMediaPermissionError] = useState<string | null>(null);
 
   const [chatInput, setChatInput] = useState<string>('');
   const [activeAttachMenu, setActiveAttachMenu] = useState<ChatAttachmentType | null>(null);
@@ -321,17 +324,62 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
   const [pendingFileType, setPendingFileType] = useState<ChatAttachmentType>('photo');
   const [expandedAttachment, setExpandedAttachment] = useState<LobbyChatMessage['attachment'] | null>(null);
 
-  // Manage real webcam stream when videoEnabled is toggled
+  // Microphone remains muted on lobby/room entry and only starts after the user enables it.
   useEffect(() => {
-    if (!videoEnabled) {
-      if (localMediaStream) {
-        localMediaStream.getTracks().forEach((t) => t.stop());
-        setLocalMediaStream(null);
-      }
+    if (!micEnabled) {
+      microphoneStreamRef.current?.getAudioTracks().forEach((track) => track.stop());
+      microphoneStreamRef.current = null;
       return;
     }
 
     let cancelled = false;
+    let requestedStream: MediaStream | null = null;
+
+    if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
+      navigator.mediaDevices
+        .getUserMedia({ audio: true, video: false })
+        .then((stream) => {
+          if (cancelled) {
+            stream.getTracks().forEach((track) => track.stop());
+            return;
+          }
+          requestedStream = stream;
+          microphoneStreamRef.current = stream;
+          setMediaPermissionError(null);
+        })
+        .catch((error: DOMException) => {
+          setMicEnabled(false);
+          setMediaPermissionError(
+            error?.name === 'NotAllowedError'
+              ? 'Microphone access was denied. Allow it in browser settings.'
+              : 'Microphone is unavailable on this device.'
+          );
+        });
+    } else {
+      setMicEnabled(false);
+      setMediaPermissionError('This browser does not support microphone access.');
+    }
+
+    return () => {
+      cancelled = true;
+      requestedStream?.getTracks().forEach((track) => track.stop());
+      if (microphoneStreamRef.current === requestedStream) {
+        microphoneStreamRef.current = null;
+      }
+    };
+  }, [micEnabled]);
+
+  // Manage real webcam stream when videoEnabled is toggled
+  useEffect(() => {
+    if (!videoEnabled) {
+      cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+      cameraStreamRef.current = null;
+      setLocalMediaStream(null);
+      return;
+    }
+
+    let cancelled = false;
+    let requestedStream: MediaStream | null = null;
     if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
       navigator.mediaDevices
         .getUserMedia({ video: true, audio: false })
@@ -340,15 +388,30 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
             stream.getTracks().forEach((t) => t.stop());
             return;
           }
+          requestedStream = stream;
+          cameraStreamRef.current = stream;
           setLocalMediaStream(stream);
+          setMediaPermissionError(null);
         })
-        .catch(() => {
-          // Graceful fallback if no camera hardware is attached
+        .catch((error: DOMException) => {
+          setVideoEnabled(false);
+          setMediaPermissionError(
+            error?.name === 'NotAllowedError'
+              ? 'Camera access was denied. Allow it in browser settings.'
+              : 'Camera is unavailable on this device.'
+          );
         });
+    } else {
+      setVideoEnabled(false);
+      setMediaPermissionError('This browser does not support camera access.');
     }
 
     return () => {
       cancelled = true;
+      requestedStream?.getTracks().forEach((track) => track.stop());
+      if (cameraStreamRef.current === requestedStream) {
+        cameraStreamRef.current = null;
+      }
     };
   }, [videoEnabled]);
 
@@ -596,9 +659,21 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                           <span className="absolute top-1 right-1 px-1 py-0.2 rounded bg-yellow-400 text-[7px] font-mono font-bold text-slate-950 uppercase">
                             CAM
                           </span>
-                          <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-yellow-300 to-amber-500 text-slate-950 font-display font-black text-[11px] flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
-                            {peer.name[0]}
-                          </div>
+                          {isSelf && localMediaStream ? (
+                            <video
+                              autoPlay
+                              playsInline
+                              muted
+                              ref={(video) => {
+                                if (video) video.srcObject = localMediaStream;
+                              }}
+                              className="w-8 h-8 rounded-full object-cover border border-yellow-300 shadow-sm"
+                            />
+                          ) : (
+                            <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-yellow-300 to-amber-500 text-slate-950 font-display font-black text-[11px] flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
+                              {peer.name[0]}
+                            </div>
+                          )}
                           <span className="text-[9px] font-mono font-bold text-white truncate max-w-full mt-1">
                             @{peer.name}
                           </span>
@@ -659,6 +734,12 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                   </button>
                 </div>
               </div>
+
+              {mediaPermissionError && (
+                <div className="px-3.5 py-2 bg-rose-950/70 border-b border-rose-400/40 text-[10px] text-rose-100 font-semibold shrink-0">
+                  {mediaPermissionError}
+                </div>
+              )}
 
               {/* Scrollable Transparent Messages Container */}
               <div className="px-3.5 py-2.5 max-h-32 overflow-y-auto drawer-scroll space-y-2 bg-transparent">
