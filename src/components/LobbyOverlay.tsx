@@ -44,6 +44,8 @@ import {
   MessageCircle,
   ChevronRight,
   Swords,
+  Download,
+  Maximize2,
 } from 'lucide-react';
 
 export interface BattleInvitation {
@@ -317,6 +319,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
   const [attachUrlInput, setAttachUrlInput] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [pendingFileType, setPendingFileType] = useState<ChatAttachmentType>('photo');
+  const [expandedAttachment, setExpandedAttachment] = useState<LobbyChatMessage['attachment'] | null>(null);
 
   // Manage real webcam stream when videoEnabled is toggled
   useEffect(() => {
@@ -453,13 +456,16 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const objectUrl = URL.createObjectURL(file);
-    dispatchChatMessage(`Uploaded ${pendingFileType.toUpperCase()}: ${file.name}`, {
-      type: pendingFileType,
-      title: file.name,
-      url: objectUrl,
-      subtitle: `${(file.size / 1024).toFixed(1)} KB`,
-    });
+    const reader = new FileReader();
+    reader.onload = () => {
+      dispatchChatMessage(`Uploaded ${pendingFileType.toUpperCase()}: ${file.name}`, {
+        type: pendingFileType,
+        title: file.name,
+        url: typeof reader.result === 'string' ? reader.result : undefined,
+        subtitle: `${(file.size / 1024).toFixed(1)} KB`,
+      });
+    };
+    reader.readAsDataURL(file);
     e.target.value = '';
   };
 
@@ -675,7 +681,11 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                       <p className="text-white/95 text-[11px] leading-snug break-words">{msg.text}</p>
 
                       {msg.attachment && (
-                        <div className="mt-1 p-2 rounded-xl bg-white/10 border border-white/20 flex items-center justify-between gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setExpandedAttachment(msg.attachment ?? null)}
+                          className="mt-1 w-full p-2 rounded-xl bg-white/10 border border-white/20 flex items-center justify-between gap-2 text-left hover:bg-white/15 hover:border-yellow-400/70 transition-colors cursor-pointer"
+                        >
                           <div className="min-w-0 flex-1">
                             <div className="text-[10px] font-display font-bold text-yellow-300 uppercase">
                               {msg.attachment.type}
@@ -709,7 +719,8 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                               className="w-10 h-10 rounded-lg object-cover border border-white/25 shrink-0"
                             />
                           )}
-                        </div>
+                          <Maximize2 className="w-4 h-4 text-yellow-300 shrink-0" />
+                        </button>
                       )}
                     </div>
                   ))
@@ -742,6 +753,15 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                   ref={fileInputRef}
                   type="file"
                   onChange={handleFileChange}
+                  accept={
+                    pendingFileType === 'photo'
+                      ? 'image/*'
+                      : pendingFileType === 'video'
+                        ? 'video/*'
+                        : pendingFileType === 'pdf'
+                          ? 'application/pdf,.pdf'
+                          : undefined
+                  }
                   className="hidden"
                 />
                 <button
@@ -2169,6 +2189,24 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                         <span className="text-[10px] font-mono text-slate-400">{msg.timestamp}</span>
                       </div>
                       <p className="text-slate-800 text-xs leading-relaxed break-words">{msg.text}</p>
+                      {msg.attachment && (
+                        <button
+                          type="button"
+                          onClick={() => setExpandedAttachment(msg.attachment ?? null)}
+                          className="w-full mt-1 p-2 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-2 text-left hover:border-amber-400 hover:bg-amber-50 transition-colors cursor-pointer"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="text-[9px] font-display font-bold text-amber-700 uppercase">
+                              {msg.attachment.type}
+                            </div>
+                            <div className="text-xs font-bold text-slate-900 truncate">{msg.attachment.title}</div>
+                            {msg.attachment.subtitle && (
+                              <div className="text-[10px] font-mono text-slate-500">{msg.attachment.subtitle}</div>
+                            )}
+                          </div>
+                          <Maximize2 className="w-4 h-4 text-amber-600 shrink-0" />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -2196,6 +2234,104 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                   </button>
                 </form>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {expandedAttachment && (
+        <div
+          data-testid="expanded-chat-attachment"
+          className="fixed inset-0 z-[100] pointer-events-auto flex items-center justify-center p-4 sm:p-8 bg-slate-950/85 backdrop-blur-sm"
+          onClick={() => setExpandedAttachment(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${expandedAttachment.type} preview`}
+            onClick={(event) => event.stopPropagation()}
+            className="w-full max-w-5xl h-[min(82vh,760px)] rounded-3xl bg-slate-900 border border-yellow-400/50 shadow-[0_24px_80px_rgba(0,0,0,0.75)] overflow-hidden flex flex-col"
+          >
+            <div className="h-14 px-4 sm:px-5 flex items-center justify-between gap-3 border-b border-white/15 bg-slate-950 shrink-0">
+              <div className="min-w-0">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-yellow-300">
+                  {expandedAttachment.type}
+                </div>
+                <div className="text-sm sm:text-base font-display font-bold text-white truncate">
+                  {expandedAttachment.title}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {expandedAttachment.type === 'notes' ? (
+                  <a
+                    href={`data:text/plain;charset=utf-8,${encodeURIComponent(`${expandedAttachment.title}\n${expandedAttachment.subtitle || ''}`)}`}
+                    download={`${expandedAttachment.title.replace(/[^a-z0-9]+/gi, '-') || 'study-notes'}.txt`}
+                    className="h-9 px-3 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-bold text-xs flex items-center gap-2 transition-colors"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download
+                  </a>
+                ) : expandedAttachment.type === 'link' ? (
+                  <a
+                    href={expandedAttachment.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="h-9 px-3 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-bold text-xs flex items-center gap-2 transition-colors"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Open
+                  </a>
+                ) : expandedAttachment.url ? (
+                  <a
+                    href={expandedAttachment.url}
+                    download={expandedAttachment.title}
+                    className="h-9 px-3 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-bold text-xs flex items-center gap-2 transition-colors"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download
+                  </a>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => setExpandedAttachment(null)}
+                  aria-label="Close attachment preview"
+                  className="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 min-h-0 bg-slate-950 p-3 sm:p-4">
+              {expandedAttachment.type === 'photo' && expandedAttachment.url && (
+                <img src={expandedAttachment.url} alt={expandedAttachment.title} referrerPolicy="no-referrer" className="w-full h-full object-contain rounded-xl" />
+              )}
+              {expandedAttachment.type === 'video' && expandedAttachment.url && (
+                <video src={expandedAttachment.url} controls className="w-full h-full rounded-xl bg-black object-contain" />
+              )}
+              {expandedAttachment.type === 'pdf' && expandedAttachment.url && (
+                <iframe src={expandedAttachment.url} title={expandedAttachment.title} className="w-full h-full rounded-xl bg-white border-0" />
+              )}
+              {expandedAttachment.type === 'link' && (
+                <div className="w-full h-full rounded-xl border border-white/15 bg-white flex flex-col items-center justify-center p-8 text-center">
+                  <Link2 className="w-14 h-14 text-amber-500 mb-4" />
+                  <div className="text-xl font-display font-black text-slate-900 mb-2">{expandedAttachment.title}</div>
+                  <div className="text-sm text-slate-500 mb-5">{expandedAttachment.subtitle}</div>
+                  <a href={expandedAttachment.url} target="_blank" rel="noreferrer" className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-yellow-300 font-bold flex items-center gap-2 transition-colors">
+                    <ExternalLink className="w-4 h-4" />
+                    Open Resource
+                  </a>
+                </div>
+              )}
+              {expandedAttachment.type === 'notes' && (
+                <div className="w-full h-full rounded-xl border border-white/15 bg-amber-50 flex flex-col items-center justify-center p-8 text-center">
+                  <BookOpen className="w-14 h-14 text-amber-600 mb-4" />
+                  <div className="text-2xl font-display font-black text-slate-900 mb-2">{expandedAttachment.title}</div>
+                  <div className="text-sm text-slate-600">{expandedAttachment.subtitle}</div>
+                </div>
+              )}
+              {!expandedAttachment.url && expandedAttachment.type !== 'link' && expandedAttachment.type !== 'notes' && (
+                <div className="w-full h-full flex items-center justify-center text-white/70">Preview unavailable for this file.</div>
+              )}
             </div>
           </div>
         </div>
