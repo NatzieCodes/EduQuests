@@ -325,6 +325,8 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [pendingFileType, setPendingFileType] = useState<ChatAttachmentType>('photo');
   const [expandedAttachment, setExpandedAttachment] = useState<LobbyChatMessage['attachment'] | null>(null);
+  const [battleModeDrawerOpen, setBattleModeDrawerOpen] = useState(false);
+  const [challengeMode, setChallengeMode] = useState<GameMode>('pvp');
 
   // Microphone remains muted on lobby/room entry and only starts after the user enables it.
   useEffect(() => {
@@ -548,8 +550,74 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
     e.target.value = '';
   };
 
+  const handleSendBattleChallenge = () => {
+    onSelectMode(challengeMode);
+    const modeName = BATTLE_MODES[challengeMode]?.title ?? challengeMode.toUpperCase();
+    dispatchChatMessage(`Challenge: ${modeName}`, {
+      type: 'notes',
+      title: 'Battle Challenge',
+      url: `battle://${challengeMode}`,
+      subtitle: `${modeName} · Click to choose study file`,
+    });
+    setBattleModeDrawerOpen(false);
+  };
+
+  const handleOpenBattleChallenge = (
+    attachment: LobbyChatMessage['attachment'] | null
+  ) => {
+    if (attachment?.title !== 'Battle Challenge') {
+      setExpandedAttachment(attachment ?? null);
+      return;
+    }
+    const challenge = attachment.url?.replace('battle://', '') as GameMode | undefined;
+    if (challenge && challenge in BATTLE_MODES) {
+      onSelectMode(challenge);
+      setChallengeMode(challenge);
+    }
+    onOpenInventoryModal(false);
+  };
+
   return (
     <div className="fixed inset-0 z-10 pointer-events-none flex flex-col justify-between p-4 md:p-6">
+      {battleModeDrawerOpen && (
+        <div className="fixed bottom-5 left-1/2 z-[70] pointer-events-auto w-[min(520px,calc(100vw-32px))] -translate-x-1/2 rounded-2xl border border-amber-300 bg-slate-950 p-3 shadow-[0_18px_50px_rgba(0,0,0,0.55)]">
+          <div className="flex items-center justify-between px-1 pb-2">
+            <div>
+              <div className="text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-yellow-300">Battle Challenge</div>
+              <div className="text-sm font-display font-black text-white">Choose a battle group</div>
+            </div>
+            <button type="button" onClick={() => setBattleModeDrawerOpen(false)} className="grid h-8 w-8 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20 cursor-pointer" aria-label="Close battle drawer">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {([
+              ['raid', 'Raid Boss', 'Boss battle'],
+              ['pvp', '1V1 PvP', 'Two-player duel'],
+              ['team', 'Team 3V3', 'Team battle'],
+              ['training', 'Training', 'Practice mode'],
+            ] as const).map(([mode, title, subtitle]) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setChallengeMode(mode)}
+                className={`rounded-xl border px-3 py-3 text-left transition-all cursor-pointer ${
+                  challengeMode === mode
+                    ? 'border-yellow-300 bg-yellow-400 text-slate-950 shadow-[0_4px_0_#92400e]'
+                    : 'border-white/15 bg-white/10 text-white hover:border-yellow-400/70 hover:bg-white/15'
+                }`}
+              >
+                <div className="text-xs font-display font-black">{title}</div>
+                <div className={`mt-0.5 text-[10px] font-mono ${challengeMode === mode ? 'text-slate-700' : 'text-white/60'}`}>{subtitle}</div>
+              </button>
+            ))}
+          </div>
+          <button type="button" onClick={handleSendBattleChallenge} className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500 text-xs font-display font-black text-slate-950 shadow-sm cursor-pointer">
+            <Swords className="h-4 w-4" />
+            SEND CHALLENGE
+          </button>
+        </div>
+      )}
       {/* =====================================================================
           TOP ROW: LOGO ON LEFT, CENTER ROOM SQUAD BAR (WHEN IN ROOM), UTILITIES ON RIGHT
          ===================================================================== */}
@@ -790,7 +858,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                       {msg.attachment && (
                         <button
                           type="button"
-                          onClick={() => setExpandedAttachment(msg.attachment ?? null)}
+                          onClick={() => handleOpenBattleChallenge(msg.attachment ?? null)}
                           className="mt-1 w-full p-2 rounded-xl bg-white/10 border border-white/20 flex items-center justify-between gap-2 text-left hover:bg-white/15 hover:border-yellow-400/70 transition-colors cursor-pointer"
                         >
                           <div className="min-w-0 flex-1">
@@ -854,7 +922,17 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                 </div>
               )}
 
-              {/* Rich Attachment Buttons: Photos, Videos, Hyperlinks, PDF Files, Notes */}
+              {/* PVP and rich attachment controls */}
+              <div className="px-3 pt-1.5 bg-white/5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setBattleModeDrawerOpen(true)}
+                  className="h-8 w-full rounded-lg bg-yellow-400 hover:bg-yellow-300 border border-yellow-200 text-[10px] font-display font-black text-slate-950 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Swords className="h-3.5 w-3.5" />
+                  PVP / BATTLE CHALLENGE
+                </button>
+              </div>
               <div className="px-3 pt-2 pb-1 border-t border-white/15 bg-white/5 flex items-center justify-between gap-1 shrink-0">
                 <input
                   ref={fileInputRef}
@@ -871,22 +949,6 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                   }
                   className="hidden"
                 />
-                <button
-                  type="button"
-                  onClick={() => {
-                    onSelectMode('pvp');
-                    dispatchChatMessage('PvP battle challenge selected for this room.', {
-                      type: 'notes',
-                      title: 'PvP Challenge',
-                      subtitle: '1V1 · Battle mode selected',
-                    });
-                  }}
-                  className="px-2 py-1 rounded-full bg-yellow-400 hover:bg-yellow-300 border border-yellow-200 text-[10px] font-display font-black text-slate-950 flex items-center gap-1 transition-colors cursor-pointer"
-                  title="Select PvP Battle Mode"
-                >
-                  <Swords className="w-3 h-3" />
-                  <span>PVP</span>
-                </button>
                 <button
                   type="button"
                   onClick={() => handleQuickShareAttachment('photo')}
@@ -2253,7 +2315,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                       {msg.attachment && (
                         <button
                           type="button"
-                          onClick={() => setExpandedAttachment(msg.attachment ?? null)}
+                          onClick={() => handleOpenBattleChallenge(msg.attachment ?? null)}
                           className="w-full mt-1 p-2 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-2 text-left hover:border-amber-400 hover:bg-amber-50 transition-colors cursor-pointer"
                         >
                           <div className="min-w-0 flex-1">
@@ -2297,18 +2359,11 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                   )}
                   <button
                     type="button"
-                    onClick={() => {
-                      onSelectMode('pvp');
-                      dispatchChatMessage('PvP battle challenge selected for this room.', {
-                        type: 'notes',
-                        title: 'PvP Challenge',
-                        subtitle: '1V1 · Battle mode selected',
-                      });
-                    }}
+                    onClick={() => setBattleModeDrawerOpen(true)}
                     className="mb-2 h-9 w-full rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-yellow-300 text-[11px] font-display font-black flex items-center justify-center gap-2 transition-colors cursor-pointer"
                   >
                     <Swords className="w-4 h-4" />
-                    START PVP
+                    PVP / BATTLE CHALLENGE
                   </button>
                   <div className="mb-2 grid grid-cols-5 gap-1.5 w-full">
                     {[
