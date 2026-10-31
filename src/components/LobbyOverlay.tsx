@@ -683,7 +683,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                               ref={(video) => {
                                 if (video) video.srcObject = localMediaStream;
                               }}
-                              className="w-8 h-8 rounded-full object-cover border border-yellow-300 shadow-sm"
+                              className="w-8 h-8 rounded-full object-cover border border-yellow-300 shadow-sm scale-x-[-1]"
                             />
                           ) : (
                             <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-yellow-300 to-amber-500 text-slate-950 font-display font-black text-[11px] flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
@@ -2148,7 +2148,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                             ref={(video) => {
                               if (video) video.srcObject = localMediaStream;
                             }}
-                            className="absolute inset-0 w-full h-full object-cover"
+                            className="absolute inset-0 w-full h-full object-cover scale-x-[-1]"
                           />
                         ) : (
                           <>
