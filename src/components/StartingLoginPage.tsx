@@ -193,7 +193,7 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
     const total = GAME_PREVIEWS.length;
     // One very calm, constant speed for automatic movement and card selection.
     const slowMotionSpeed = 0.0125;
-    const selectedCardSpeed = 0.0125;
+    const selectedCardSpeed = 8;
 
     const tick = (now: number) => {
       const dt = Math.min(0.06, Math.max(0, (now - lastTime) / 1000));
@@ -210,7 +210,7 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
           phaseRef.current = ((target % total) + total) % total;
           targetIndexRef.current = null;
         } else {
-          const step = Math.sign(diff) * Math.min(Math.abs(diff), selectedCardSpeed * dt);
+          const step = diff * (1 - Math.exp(-selectedCardSpeed * dt));
           phaseRef.current = (((phaseRef.current + step) % total) + total) % total;
         }
       } else if (now >= pauseUntilRef.current) {
@@ -218,7 +218,7 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
         phaseRef.current = (((phaseRef.current - dt * slowMotionSpeed) % total) + total) % total;
       }
 
-      if (now - lastCommit >= 32) {
+      if (now - lastCommit >= 16) {
         lastCommit = now;
         setOrbitPhase(phaseRef.current);
       }
@@ -521,7 +521,7 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
                     pointerEvents: isVisible ? 'auto' : 'none',
                   }}
                   title={`Click anywhere on this card to maximize ${item.title}`}
-                  className={`group/preview absolute w-[330px] sm:w-[500px] lg:w-[620px] xl:w-[680px] h-[220px] sm:h-[295px] lg:h-[360px] xl:h-[390px] rounded-3xl bg-white/95 hover:bg-gradient-to-br hover:from-amber-50/95 hover:via-white hover:to-yellow-50/90 text-slate-900 p-4 border-2 cursor-pointer overflow-hidden will-change-transform transition-colors duration-200 ${
+                  className={`group/preview absolute w-[330px] sm:w-[500px] lg:w-[620px] xl:w-[680px] h-[220px] sm:h-[295px] lg:h-[360px] xl:h-[390px] rounded-3xl bg-white/95 hover:bg-gradient-to-br hover:from-amber-50/95 hover:via-white hover:to-yellow-50/90 text-slate-900 p-4 border-2 cursor-pointer overflow-hidden will-change-transform transition-[border-color,box-shadow,background-color] duration-300 ${
                     isMiddleMaximized
                       ? 'border-yellow-400 ring-4 ring-yellow-400/30 shadow-[0_24px_65px_rgba(0,0,0,0.6)] hover:shadow-[0_24px_68px_rgba(250,204,21,0.45)]'
                       : 'border-slate-200/90 hover:border-yellow-400 hover:ring-4 hover:ring-yellow-400/25 shadow-[0_12px_40px_rgba(0,0,0,0.35)] hover:shadow-[0_20px_48px_rgba(250,204,21,0.38)]'

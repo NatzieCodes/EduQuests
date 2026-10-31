@@ -805,8 +805,8 @@ export function computeCircularPreviewOrbit(
 
   // Shifted to the right side of the viewport; middle card sits at x = 44, top/bottom cards curve further right (x = 112)
   const x = Math.round(44 + Math.pow(signedOffset, 2) * 68);
-  // Larger, tall enough to reach near both screen edges while the center card stays in front.
-  const y = Math.round(signedOffset * 300);
+  // Keep a consistent vertical gap between card positions around the circular arc.
+  const y = Math.round(signedOffset * 420);
 
   // Smooth bell-curve maximization in the middle (offset === 0 -> scale 1.0, offset === ±1 -> scale ~0.66)
   const centerWeight = Math.exp(-Math.pow(absOffset / 0.9, 2));
@@ -835,4 +835,3 @@ export function computeCircularPreviewOrbit(
     isVisible,
   };
 }
-
