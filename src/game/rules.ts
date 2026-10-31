@@ -192,7 +192,7 @@ export const BATTLE_MODES: Record<GameMode, BattleModeSpec> = {
     enemyCp: 1000,
     enemyMaxHp: 800,
     timeLimitSec: 0,
-    playerShields: 3,
+    playerShields: 0,
     enemyShields: 0,
     partyOrbs: 3,
     environmentName: 'Scholar Courtyard Dojo (Sunset)',

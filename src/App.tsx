@@ -134,6 +134,7 @@ export default function App() {
   );
   const [questionIndex, setQuestionIndex] = useState(0);
   const [timeRemainingSec, setTimeRemainingSec] = useState(120);
+  const [battleDurationSec, setBattleDurationSec] = useState(180);
   const [useShieldNext, setUseShieldNext] = useState(false);
   const [combatEvent, setCombatEvent] = useState<CombatVisualEvent | null>(null);
   const [liveToast, setLiveToast] = useState<string | null>(null);
@@ -339,7 +340,7 @@ export default function App() {
   }, [studentName, blockSection, selectedHero, localPlayerId, buildLocalMember]);
 
   const launchActualBattle = useCallback(
-    (modeOverride?: GameMode, heroOverride?: HeroId) => {
+    (modeOverride?: GameMode, heroOverride?: HeroId, durationOverride?: number) => {
       const targetMode = modeOverride ?? selectedMode;
       const targetHero = heroOverride ?? selectedHero;
       const spec = BATTLE_MODES[targetMode];
@@ -347,7 +348,13 @@ export default function App() {
       soundFX.playClick();
       setCombat(createInitialCombatState(targetMode, targetHero));
       setQuestionIndex(0);
-      setTimeRemainingSec(spec.timeLimitSec);
+      setTimeRemainingSec(
+        durationOverride !== undefined
+          ? durationOverride
+          : battleDurationSec > 0
+            ? battleDurationSec
+            : spec.timeLimitSec
+      );
       setLastFeedback(null);
       setUseShieldNext(false);
       setRunSnapshot(null);
@@ -356,14 +363,17 @@ export default function App() {
       document.body.dataset.state = 'playing';
       setShellState('playing');
     },
-    [selectedMode, selectedHero]
+    [selectedMode, selectedHero, battleDurationSec]
   );
 
   // Enforce mandatory pre-battle Room/Invite + PDF/notes reference before fighting in any mode
   const handleRequestStartBattle = useCallback(
-    (modeOverride?: GameMode) => {
+    (modeOverride?: GameMode, durationOverride?: number) => {
       if (modeOverride) {
         setSelectedMode(modeOverride);
+      }
+      if (durationOverride !== undefined) {
+        setBattleDurationSec(durationOverride);
       }
       if (!hasCustomNotes || !hasRoomOrInvite) {
         soundFX.playClick();
@@ -371,7 +381,7 @@ export default function App() {
         setAiModalOpen(true);
         return;
       }
-      launchActualBattle(modeOverride);
+      launchActualBattle(modeOverride, undefined, durationOverride);
     },
     [hasCustomNotes, hasRoomOrInvite, launchActualBattle]
   );
@@ -927,7 +937,7 @@ export default function App() {
             setRoomJoinError(null);
             setRoomModalOpen(true);
           }}
-          onStartBattle={() => handleRequestStartBattle()}
+          onStartBattle={(durationSec) => handleRequestStartBattle(undefined, durationSec)}
           roomCode={roomCode}
           isJoinedInRoom={isJoinedInRoom}
           classmates={classmates}
@@ -1066,4 +1076,3 @@ export default function App() {
     </main>
   );
 }
-

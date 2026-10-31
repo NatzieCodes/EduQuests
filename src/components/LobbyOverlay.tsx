@@ -90,7 +90,7 @@ interface LobbyOverlayProps {
   hasCustomNotes: boolean;
   onOpenInventoryModal: (startBattleAfter?: boolean) => void;
   onOpenRoomModal: () => void;
-  onStartBattle: () => void;
+  onStartBattle: (durationSec: number) => void;
   roomCode: string;
   isJoinedInRoom?: boolean;
   classmates: ClassmateMember[];
@@ -216,6 +216,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
   const [authModalMode, setAuthModalMode] = useState<'closed' | 'profile' | 'login' | 'register'>('closed');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [battleDurationSec, setBattleDurationSec] = useState(180);
   const [copiedKey, setCopiedKey] = useState<'live' | 'room' | 'gh' | 'social' | null>(null);
 
   const [draftName, setDraftName] = useState(studentName);
@@ -958,10 +959,6 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
             className="group/profile w-full rounded-3xl bg-white/95 hover:bg-gradient-to-br hover:from-amber-50/95 hover:via-white hover:to-yellow-50/90 text-slate-900 border-2 border-slate-200/90 hover:border-yellow-400 hover:ring-4 hover:ring-yellow-400/25 p-4 shadow-[0_12px_40px_rgba(0,0,0,0.18)] hover:shadow-[0_20px_48px_rgba(250,204,21,0.38)] hover:-translate-y-1 active:translate-y-0 transition-all duration-200 relative overflow-hidden cursor-pointer"
             title="Open scholar profile"
           >
-            <div className="absolute top-0 right-[78px] px-3.5 py-1 bg-slate-900 group-hover/profile:bg-gradient-to-r group-hover/profile:from-yellow-300 group-hover/profile:via-amber-400 group-hover/profile:to-yellow-500 text-yellow-300 group-hover/profile:text-slate-950 font-display font-black text-[10px] tracking-widest rounded-bl-2xl uppercase shadow-sm flex items-center gap-1 transition-colors">
-              <Trophy className="w-3 h-3" />
-              <span>LV. 40 · SCHOLAR</span>
-            </div>
             <button
               type="button"
               data-testid="player-logout-btn"
@@ -969,14 +966,14 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                 e.stopPropagation();
                 onLogoutStudent();
               }}
-              className="absolute top-0 right-0 h-8 px-2.5 rounded-bl-2xl bg-white hover:bg-rose-50 border-l border-b border-slate-200 hover:border-rose-300 text-slate-600 hover:text-rose-600 font-display font-bold text-[11px] flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer z-10"
+              className="absolute top-[39px] right-4 h-8 px-2.5 rounded-xl bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-300 text-slate-600 hover:text-rose-600 font-display font-bold text-[11px] flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer z-10"
             >
               <LogOut className="w-3.5 h-3.5" />
               <span>Logout</span>
             </button>
 
             <div className="w-full">
-              <div className="min-w-0 pr-28 pb-3 border-b border-slate-200/90">
+              <div className="min-w-0 pr-24 pb-3 border-b border-slate-200/90">
                 <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-amber-700 uppercase tracking-wider">
                   <UserCheck className="w-3.5 h-3.5 text-amber-600" />
                   <span>SCHOLAR PROFILE</span>
@@ -1124,7 +1121,10 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                     <button
                       key={mKey}
                       type="button"
-                      onClick={() => onSelectMode(mKey)}
+                      onClick={() => {
+                        onSelectMode(mKey);
+                        setBattleDurationSec(mKey === 'training' ? 0 : 180);
+                      }}
                       className={`py-2 px-1 rounded-xl text-center transition-all cursor-pointer ${
                         isSelected
                           ? 'bg-slate-900 text-yellow-300 font-black shadow-xs scale-[1.02]'
@@ -1148,6 +1148,27 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                   ? '3v3 squad battle (Alpha vs Omega).'
                   : 'Solo practice training with study notes.'}
               </div>
+              <div className="mt-2">
+                <div className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                  Battle Duration
+                </div>
+                <div className="grid grid-cols-4 gap-1 p-1 rounded-xl bg-slate-100 border border-slate-200">
+                  {(selectedMode === 'training' ? [0] : [60, 90, 120, 180]).map((duration) => (
+                    <button
+                      key={duration}
+                      type="button"
+                      onClick={() => setBattleDurationSec(duration)}
+                      className={`py-1.5 rounded-lg text-[10px] font-display font-black transition-all cursor-pointer ${
+                        battleDurationSec === duration
+                          ? 'bg-yellow-400 text-slate-950 shadow-sm'
+                          : 'bg-white text-slate-600 border border-slate-200 hover:border-yellow-400'
+                      }`}
+                    >
+                      {duration === 0 ? 'UNTIMED' : `${duration} SEC`}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {/* TIER 2: Single Dominant Primary Action CTA */}
@@ -1157,7 +1178,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                 data-start="true"
                 onClick={(e) => {
                   e.currentTarget.blur();
-                  onStartBattle();
+                  onStartBattle(selectedMode === 'training' ? 0 : battleDurationSec);
                 }}
                 className="w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500 hover:from-yellow-200 hover:to-amber-400 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99] text-slate-950 font-display font-black text-base tracking-wide flex items-center justify-center gap-2 shadow-[0_8px_24px_rgba(245,158,11,0.45)] hover:shadow-[0_12px_28px_rgba(245,158,11,0.6)] transition-all whitespace-nowrap cursor-pointer"
               >

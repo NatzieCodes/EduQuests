@@ -8,7 +8,7 @@ import {
   QuizDeck,
   QuizQuestion,
 } from '../game/rules';
-import { LogOut, Pause, RotateCcw, Shield, Volume2, VolumeX, Zap, CheckCircle2, XCircle } from 'lucide-react';
+import { LogOut, Pause, RotateCcw, Shield, Volume2, VolumeX, CheckCircle2, XCircle } from 'lucide-react';
 
 interface BattleHudProps {
   combat: BattleCombatState;
@@ -68,7 +68,6 @@ export const BattleHud: React.FC<BattleHudProps> = ({
 
   const playerHpPct = Math.max(0, Math.min(100, Math.round((combat.playerHp / combat.playerMaxHp) * 100)));
   const enemyHpPct = Math.max(0, Math.min(100, Math.round((combat.enemyHp / combat.enemyMaxHp) * 100)));
-  const canUseCharged = combat.energy >= 100 && !lastFeedback;
 
   const opponentLabel =
     combat.mode === 'pvp'
@@ -108,7 +107,7 @@ export const BattleHud: React.FC<BattleHudProps> = ({
               </span>
 
               {/* PvP / Team Orbs & 2 Damage Blocks */}
-              {combat.mode !== 'raid' && (
+              {(combat.mode === 'pvp' || combat.mode === 'team') && (
                 <div className="flex items-center gap-2.5">
                   {/* Party Pokéball Orbs */}
                   <div className="flex items-center gap-1" aria-label={`Player Orbs: ${combat.playerOrbs}`}>
@@ -160,7 +159,7 @@ export const BattleHud: React.FC<BattleHudProps> = ({
             </button>
 
             {/* 2 Damage Blocks toggle in PvP / Team modes */}
-            {combat.mode !== 'raid' && (
+            {(combat.mode === 'pvp' || combat.mode === 'team') && (
               <button
                 type="button"
                 data-testid="pvp-block-btn"
@@ -220,56 +219,74 @@ export const BattleHud: React.FC<BattleHudProps> = ({
         {/* TOP-RIGHT: Classmate / Raid Boss Status Card + Compact Utility Controls */}
         <div className="flex flex-col items-end gap-2">
           <div className="pointer-events-auto rounded-2xl bg-white/92 text-slate-900 px-3.5 py-2 shadow-xl border border-white min-w-[205px] sm:min-w-[240px] text-right">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1">
-                <span className="inline-block w-4 h-4 rounded-full bg-amber-500 text-slate-950 text-[9px] font-bold flex items-center justify-center">
-                  G
-                </span>
-                <span className="inline-block w-4 h-4 rounded-full bg-rose-600 text-white text-[9px] font-bold flex items-center justify-center">
-                  F
-                </span>
-              </div>
-              <span className="font-display font-bold text-sm sm:text-base text-slate-800 truncate">
-                {opponentLabel}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between mt-1">
-              {combat.mode !== 'raid' ? (
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-0.5" aria-label={`Enemy Blocks: ${combat.enemyShields}`}>
-                    {[0, 1].map((idx) => (
-                      <Shield
-                        key={idx}
-                        className={`w-3.5 h-3.5 ${
-                          idx < combat.enemyShields
-                            ? 'text-fuchsia-600 fill-fuchsia-400'
-                            : 'text-slate-400 fill-slate-300 opacity-45'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-1" aria-label={`Enemy Orbs: ${combat.enemyOrbs}`}>
-                    {[0, 1, 2].map((idx) => (
-                      <span
-                        key={idx}
-                        className={`w-3.5 h-3.5 rounded-full border border-slate-900 ${
-                          idx < combat.enemyOrbs ? 'bg-red-500' : 'bg-slate-400 opacity-50'
-                        }`}
-                      />
-                    ))}
-                  </div>
+            {combat.mode === 'raid' && (
+              <>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span className="text-[10px] font-mono font-bold uppercase text-amber-700">Raid Scoreboard</span>
+                  <span className="text-xs font-display font-black text-slate-900">{opponentLabel}</span>
                 </div>
-              ) : (
-                <span className="text-[11px] font-semibold text-amber-700">
-                  {classmates.length} Raiders Active
-                </span>
-              )}
+                <div className="text-[11px] flex items-center justify-between mb-1">
+                  <span className="font-bold text-slate-600">Boss Health</span>
+                  <span className="font-mono-num font-black text-amber-700">{combat.enemyHp}/{combat.enemyMaxHp}</span>
+                </div>
+                <div className="h-2 rounded-full bg-slate-200 overflow-hidden mb-2">
+                  <div className="h-full bg-gradient-to-r from-yellow-400 to-amber-500" style={{ width: `${enemyHpPct}%` }} />
+                </div>
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-slate-600">Correct Streak</span>
+                  <span className="px-2 py-0.5 rounded-md bg-yellow-100 text-amber-800 font-black">{combat.streak}x</span>
+                </div>
+              </>
+            )}
 
-              <span className="text-[11px] font-display font-bold text-slate-600 truncate max-w-[115px]">
-                {deck.subject}
-              </span>
-            </div>
+            {combat.mode === 'team' && (
+              <>
+                <div className="text-[10px] font-mono font-bold uppercase text-amber-700 mb-2">Team Scoreboard</div>
+                <div className="text-[11px] flex items-center justify-between mb-1">
+                  <span className="font-bold text-slate-600">Team Health</span>
+                  <span className="font-mono-num font-black text-amber-700">{combat.playerHp}/{combat.playerMaxHp}</span>
+                </div>
+                <div className="h-2 rounded-full bg-slate-200 overflow-hidden mb-2">
+                  <div className="h-full bg-gradient-to-r from-yellow-400 to-amber-500" style={{ width: `${playerHpPct}%` }} />
+                </div>
+                <div className="flex items-center justify-between text-[11px] mb-1">
+                  <span className="text-slate-600">Correct Streak</span>
+                  <span className="px-2 py-0.5 rounded-md bg-yellow-100 text-amber-800 font-black">{combat.streak}x</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-slate-600">Alpha</span><span className="font-black">{combat.teamAlphaScore}</span>
+                  <span className="text-slate-400">vs</span>
+                  <span className="text-slate-600">Omega</span><span className="font-black">{combat.teamOmegaScore}</span>
+                </div>
+              </>
+            )}
+
+            {combat.mode === 'pvp' && (
+              <>
+                <div className="text-[10px] font-mono font-bold uppercase text-amber-700 mb-2">1v1 Scoreboard</div>
+                <div className="flex items-center justify-between text-[11px] mb-1">
+                  <span className="font-bold text-slate-600">Health</span>
+                  <span className="font-mono-num font-black text-amber-700">{combat.playerHp}/{combat.playerMaxHp}</span>
+                </div>
+                <div className="h-2 rounded-full bg-slate-200 overflow-hidden mb-2">
+                  <div className="h-full bg-gradient-to-r from-yellow-400 to-amber-500" style={{ width: `${playerHpPct}%` }} />
+                </div>
+                <div className="flex items-center justify-between text-[11px] mb-1">
+                  <span className="text-slate-600">Correct Streak</span>
+                  <span className="px-2 py-0.5 rounded-md bg-yellow-100 text-amber-800 font-black">{combat.streak}x</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-slate-600">Blocks</span>
+                  <span className="flex items-center gap-1">
+                    {[0, 1].map((idx) => <Shield key={idx} className={`w-3.5 h-3.5 ${idx < combat.playerShields ? 'text-yellow-500 fill-yellow-400' : 'text-slate-300'}`} />)}
+                  </span>
+                </div>
+              </>
+            )}
+
+            {combat.mode === 'training' && (
+              <div className="text-xs font-display font-black text-slate-800">TRAINING · DUMMY</div>
+            )}
           </div>
 
           {/* Top-Right Compact Utility Buttons: Mute [M], Pause [P], Restart [R] */}
@@ -356,102 +373,44 @@ export const BattleHud: React.FC<BattleHudProps> = ({
       </div>
 
       {/* =====================================================================
-          BOTTOM DOCK: Charged Attack Orbs + PvP Block Button + AI Quiz Question
+          BOTTOM DOCK: Blocks + White and Yellow Quiz Question
          ===================================================================== */}
       <div className="pointer-events-auto w-full max-w-4xl mx-auto flex flex-col gap-2">
-        {/* Pokémon GO Circular Charged Move Buttons + PvP 2-Block Action */}
-        <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-5">
-          {/* Primary Charged Attack Orb */}
-          <button
-            type="button"
-            disabled={!canUseCharged}
-            onClick={() => onTriggerChargedMove(hero.chargedAttackName)}
-            className={`group relative flex items-center gap-2.5 px-4 py-1.5 rounded-full border-2 transition-all ${
-              canUseCharged
-                ? 'bg-yellow-400 border-white text-slate-950 shadow-[0_0_20px_rgba(250,204,21,0.85)] scale-105 cursor-pointer'
-                : 'bg-slate-950/85 border-white/30 text-slate-200 opacity-90 cursor-not-allowed'
-            }`}
-          >
-            <div className="w-8 h-8 rounded-full bg-slate-900 border border-white/40 flex items-center justify-center relative overflow-hidden">
-              <div
-                className="absolute bottom-0 inset-x-0 bg-yellow-400/75 transition-all duration-200"
-                style={{ height: `${combat.energy}%` }}
-              />
-              <Zap className="w-4 h-4 relative z-10 text-white" />
-            </div>
-            <div className="text-left">
-              <div className="text-[11px] font-display font-black tracking-wider uppercase leading-none">
-                {hero.chargedAttackName}
-              </div>
-              <div className="text-[10px] font-mono-num font-bold opacity-85 mt-0.5">
-                {canUseCharged ? 'READY! CLICK OR [SPACE]' : `CHARGE ${combat.energy}%`}
-              </div>
-            </div>
-          </button>
-
-          {/* Dedicated PvP 2-Block Button right above the Question Dock */}
-          {combat.mode === 'pvp' && (
+        {(combat.mode === 'pvp' || combat.mode === 'team') && (
+          <div className="flex items-center justify-center">
             <button
               type="button"
               disabled={combat.playerShields <= 0}
               onClick={onToggleShieldNext}
-              className={`flex items-center gap-2.5 px-4 py-1.5 rounded-full border-2 transition-all ${
+              className={`flex items-center gap-2.5 px-4 py-1.5 rounded-full border transition-all ${
                 combat.playerShields <= 0
-                  ? 'bg-slate-950/60 border-white/15 text-slate-500 cursor-not-allowed'
+                  ? 'bg-white/70 border-slate-300 text-slate-400 cursor-not-allowed'
                   : useShieldNext
-                  ? 'bg-fuchsia-600 border-white text-white shadow-[0_0_20px_rgba(217,70,239,0.9)] scale-105'
-                  : 'bg-slate-950/90 border-fuchsia-400 text-fuchsia-200 hover:bg-fuchsia-950/80'
+                  ? 'bg-yellow-400 border-yellow-500 text-slate-950 shadow-[0_0_16px_rgba(250,204,21,0.75)] scale-105'
+                  : 'bg-white border-yellow-400 text-slate-800 hover:bg-yellow-50 shadow-lg'
               }`}
             >
-              <div className="w-8 h-8 rounded-full bg-fuchsia-950 border border-fuchsia-300/60 flex items-center justify-center">
-                <Shield className="w-4 h-4 text-fuchsia-300" />
+              <div className="w-8 h-8 rounded-full bg-yellow-400 border border-yellow-500 flex items-center justify-center">
+                <Shield className="w-4 h-4 text-slate-950" />
               </div>
               <div className="text-left">
                 <div className="text-[11px] font-display font-black tracking-wider uppercase leading-none">
-                  {useShieldNext ? 'DAMAGE BLOCK ACTIVE' : 'BLOCK CLASSMATE DMG'}
+                  {useShieldNext ? 'DAMAGE BLOCK ACTIVE' : 'BLOCK ATTACK'}
                 </div>
                 <div className="text-[10px] font-mono-num font-bold opacity-90 mt-0.5">
                   {combat.playerShields} / 2 BLOCKS AVAILABLE
                 </div>
               </div>
             </button>
-          )}
-
-          {/* Secondary Charged Move Orb */}
-          <button
-            type="button"
-            disabled={!canUseCharged}
-            onClick={() => onTriggerChargedMove(hero.secondaryChargedName)}
-            className={`hidden sm:flex items-center gap-2.5 px-4 py-1.5 rounded-full border-2 transition-all ${
-              canUseCharged
-                ? 'bg-amber-400 border-white text-slate-950 shadow-[0_0_20px_rgba(245,158,11,0.85)] scale-105 cursor-pointer'
-                : 'bg-slate-950/85 border-white/30 text-slate-200 opacity-90 cursor-not-allowed'
-            }`}
-          >
-            <div className="w-8 h-8 rounded-full bg-slate-900 border border-white/40 flex items-center justify-center relative overflow-hidden">
-              <div
-                className="absolute bottom-0 inset-x-0 bg-amber-400/75 transition-all duration-200"
-                style={{ height: `${combat.energy}%` }}
-              />
-              <Zap className="w-4 h-4 relative z-10 text-white" />
-            </div>
-            <div className="text-left">
-              <div className="text-[11px] font-display font-black tracking-wider uppercase leading-none">
-                {hero.secondaryChargedName}
-              </div>
-              <div className="text-[10px] font-mono-num font-bold opacity-85 mt-0.5">
-                {canUseCharged ? 'READY! CLICK TO FIRE' : `CHARGE ${combat.energy}%`}
-              </div>
-            </div>
-          </button>
-        </div>
+          </div>
+        )}
 
         {/* Bottom Quiz Card */}
-        <div className="rounded-2xl bg-slate-950/92 border border-white/20 p-3.5 sm:p-4 shadow-2xl">
+        <div className="rounded-2xl bg-white border-2 border-yellow-400 p-3.5 sm:p-4 shadow-2xl">
           {/* Question Header Meta */}
-          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-300 mb-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600 mb-2">
             <div className="flex items-center gap-2 font-mono-num">
-              <span className="font-bold text-yellow-400">
+              <span className="font-bold text-slate-900">
                 Q{questionIndex + 1} / {deck.questions.length}
               </span>
               <span aria-hidden="true">·</span>
@@ -463,15 +422,15 @@ export const BattleHud: React.FC<BattleHudProps> = ({
             </div>
             <div className="font-mono-num text-xs">
               <span>Streak: </span>
-              <span className="font-bold text-yellow-400">{combat.streak}x</span>
+              <span className="font-bold text-amber-600">{combat.streak}x</span>
               <span aria-hidden="true" className="mx-1.5">·</span>
               <span>Total DMG: </span>
-              <span className="font-bold text-white">{combat.totalDamageDealt}</span>
+              <span className="font-bold text-slate-900">{combat.totalDamageDealt}</span>
             </div>
           </div>
 
           {/* Question Prompt */}
-          <h2 className="text-sm sm:text-base font-display font-bold text-white leading-snug mb-3">
+          <h2 className="text-sm sm:text-base font-display font-bold text-slate-950 leading-snug mb-3">
             {currentQuestion.question}
           </h2>
 
@@ -479,15 +438,15 @@ export const BattleHud: React.FC<BattleHudProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {currentQuestion.options.map((opt, idx) => {
               let btnStyle =
-                'bg-slate-900 hover:bg-slate-800 border-white/15 text-slate-100 hover:border-yellow-400';
+                'bg-white hover:bg-yellow-50 border-slate-200 text-slate-800 hover:border-yellow-400 shadow-sm';
 
               if (lastFeedback) {
                 if (idx === lastFeedback.correctIndex) {
-                  btnStyle = 'bg-amber-950/95 border-yellow-400 text-yellow-200 font-bold';
+                  btnStyle = 'bg-emerald-100 border-emerald-500 text-emerald-900 font-bold';
                 } else if (idx === lastFeedback.selectedIndex && !lastFeedback.isCorrect) {
-                  btnStyle = 'bg-rose-950/95 border-rose-400 text-rose-200';
+                  btnStyle = 'bg-rose-100 border-rose-500 text-rose-900';
                 } else {
-                  btnStyle = 'bg-slate-900/50 border-white/5 text-slate-500';
+                  btnStyle = 'bg-slate-50 border-slate-200 text-slate-400';
                 }
               }
 
@@ -510,22 +469,22 @@ export const BattleHud: React.FC<BattleHudProps> = ({
 
           {/* Instant Answer Feedback & Study Explanation Bar */}
           {lastFeedback && (
-            <div className="mt-3 pt-2.5 border-t border-white/15 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="mt-3 pt-2.5 border-t border-yellow-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-start gap-2 text-xs">
                 {lastFeedback.isCorrect ? (
-                  <CheckCircle2 className="w-4 h-4 text-yellow-400 shrink-0 mt-0.5" />
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                 ) : (
                   <XCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
                 )}
                 <div>
-                  <span className={`font-bold ${lastFeedback.isCorrect ? 'text-yellow-300' : 'text-rose-300'}`}>
+                  <span className={`font-bold ${lastFeedback.isCorrect ? 'text-emerald-700' : 'text-rose-700'}`}>
                     {lastFeedback.isCorrect
                       ? `Direct Hit! Dealt ${lastFeedback.damageDealt} DMG!`
                       : lastFeedback.blockedByPlayer
                       ? `Blocked! Your PvP Block negated all classmate damage (0 DMG taken)!`
                       : `Missed! Took ${lastFeedback.counterDamage} Counter DMG.`}
                   </span>{' '}
-                  <span className="text-slate-300">{lastFeedback.explanation}</span>
+                  <span className="text-slate-600">{lastFeedback.explanation}</span>
                 </div>
               </div>
               <button
