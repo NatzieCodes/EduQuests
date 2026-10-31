@@ -426,6 +426,12 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
   const activeVideoPeers = squadMembers;
   const selectedVideoPeer =
     activeVideoPeers.find((p) => p.id === expandedVideoPeerId) || activeVideoPeers[0] || null;
+  const sortedPopupVideoPeers = selectedVideoPeer
+    ? [
+        selectedVideoPeer,
+        ...activeVideoPeers.filter((peer) => peer.id !== selectedVideoPeer.id),
+      ]
+    : activeVideoPeers;
 
   const handleOpenVideoChat = (peerId?: string) => {
     const targetPeer =
@@ -640,7 +646,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
           {isJoinedInRoom && (
             <div
               data-testid="profile-top-chat-drawer"
-              className="group/room-chat w-full min-h-[420px] rounded-3xl bg-slate-950/35 text-white border border-white/25 shadow-[0_8px_32px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col cursor-pointer hover:border-yellow-400/70 hover:bg-gradient-to-br hover:from-slate-950/45 hover:via-slate-900/40 hover:to-amber-950/35 hover:ring-4 hover:ring-yellow-400/15 active:scale-[0.995] transition-all duration-200"
+              className="group/room-chat w-full min-h-[260px] rounded-3xl bg-slate-950/35 text-white border border-white/25 shadow-[0_8px_32px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col cursor-pointer hover:border-yellow-400/70 hover:bg-gradient-to-br hover:from-slate-950/45 hover:via-slate-900/40 hover:to-amber-950/35 hover:ring-4 hover:ring-yellow-400/15 active:scale-[0.995] transition-all duration-200"
               onClick={(event) => {
                 const target = event.target as HTMLElement;
                 if (target.closest('button, input, form, a')) return;
@@ -658,7 +664,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                       Room Cameras ({activeVideoPeers.length}) · Tap video to expand
                     </span>
                   </div>
-                  <div className="grid grid-flow-col auto-cols-[minmax(76px,1fr)] gap-1.5 overflow-x-auto drawer-scroll pb-0.5">
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 overflow-x-auto drawer-scroll pb-0.5">
                     {activeVideoPeers.slice(0, 6).map((peer) => {
                       const isSelf = peer.id === localPlayerId || peer.id === 'local-player';
                       return (
@@ -697,24 +703,6 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                         </button>
                       );
                     })}
-                    {Array.from({ length: Math.max(0, 6 - Math.min(activeVideoPeers.length, 6)) }).map((_, index) => (
-                      <div
-                        key={`empty-camera-${index}`}
-                        className="relative min-h-[160px] rounded-2xl bg-slate-950 border border-slate-700/80 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04),0_8px_18px_rgba(15,23,42,0.18)] overflow-hidden flex items-center justify-center"
-                      >
-                        <div className="text-slate-600 font-display font-black text-sm uppercase tracking-widest">
-                          Camera Open
-                        </div>
-                        <div className="absolute left-3 bottom-3 flex gap-1.5">
-                          <span className="w-8 h-8 rounded-full bg-slate-800 border border-slate-600 text-slate-400 flex items-center justify-center">
-                            <MicOff className="w-3.5 h-3.5" />
-                          </span>
-                          <span className="w-8 h-8 rounded-full bg-slate-800 border border-slate-600 text-slate-400 flex items-center justify-center">
-                            <VideoOff className="w-3.5 h-3.5" />
-                          </span>
-                        </div>
-                      </div>
-                    ))}
                   </div>
                 </div>
               )}
@@ -779,7 +767,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
 
               {/* Scrollable Transparent Messages Container */}
               <div
-                className="px-3.5 py-3 min-h-[300px] flex-1 overflow-y-auto drawer-scroll space-y-2 bg-transparent"
+                className="px-3.5 py-2.5 min-h-[150px] max-h-[240px] flex-1 overflow-y-auto drawer-scroll space-y-2 bg-transparent"
                 onClick={(event) => {
                   const target = event.target as HTMLElement;
                   if (target.closest('button, input, form, a')) return;
@@ -2155,36 +2143,22 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                 className="md:col-span-8 bg-slate-300 text-white p-3 md:p-4 flex flex-col gap-3 overflow-hidden border-b md:border-b-0 md:border-r border-slate-400/70"
               >
                 <div
-                  data-testid="popup-pinned-camera"
-                  className="relative flex-1 min-h-[300px] rounded-xl bg-slate-950 border-2 border-violet-500/90 shadow-[0_12px_30px_rgba(15,23,42,0.22)] overflow-hidden flex items-center justify-center"
+                  data-testid="popup-camera-grid"
+                  className={`flex-1 min-h-[300px] grid gap-3 ${
+                    sortedPopupVideoPeers.length === 1
+                      ? 'grid-cols-1 grid-rows-1'
+                      : sortedPopupVideoPeers.length === 2
+                        ? 'grid-cols-2 grid-rows-1'
+                        : sortedPopupVideoPeers.length === 3
+                          ? 'grid-cols-2 grid-rows-2'
+                          : sortedPopupVideoPeers.length === 4
+                            ? 'grid-cols-2 grid-rows-2'
+                            : 'grid-cols-3 grid-rows-2'
+                  }`}
                 >
-                  {(selectedVideoPeer.id === localPlayerId || selectedVideoPeer.id === 'local-player') && localMediaStream ? (
-                    <video
-                      ref={localVideoRef}
-                      autoPlay
-                      playsInline
-                      muted
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
-                  ) : (
-                    <>
-                      <div className="w-24 h-24 md:w-28 md:h-28 rounded-full bg-slate-800 border border-slate-700 text-yellow-300 font-display font-black text-3xl md:text-4xl flex items-center justify-center shadow-lg">
-                        {selectedVideoPeer.name[0]}
-                      </div>
-                      <div className="absolute bottom-5 left-1/2 -translate-x-1/2 px-4 py-2 rounded-xl bg-slate-950/75 border border-white/10 text-white font-display font-black text-sm md:text-base">
-                        @{selectedVideoPeer.name}
-                      </div>
-                    </>
-                  )}
-                  <div className="absolute left-4 top-4 px-3 py-1.5 rounded-lg bg-slate-950/80 border border-violet-400/50 text-violet-200 text-[10px] font-mono uppercase tracking-wider">
-                    Pinned Camera
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-4 gap-3 shrink-0">
-                  {activeVideoPeers.slice(0, 4).map((peer, index) => {
+                  {sortedPopupVideoPeers.map((peer, index) => {
                     const isSelf = peer.id === localPlayerId || peer.id === 'local-player';
-                    const isPinned = peer.id === selectedVideoPeer.id;
+                    const isPinned = peer.id === selectedVideoPeer?.id;
                     const hasLiveSelfVideo = isSelf && videoEnabled && localMediaStream;
                     return (
                       <button
@@ -2194,11 +2168,11 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                         onClick={() => setExpandedVideoPeerId(peer.id)}
                         aria-label={`Pin ${peer.name}'s camera`}
                         aria-pressed={isPinned}
-                        className={`relative h-[112px] rounded-xl border overflow-hidden text-center cursor-pointer transition-all duration-200 ${
+                        className={`relative min-h-0 rounded-xl bg-slate-950 border overflow-hidden text-center cursor-pointer transition-all duration-200 ${
                           isPinned
-                            ? 'bg-slate-900 border-violet-400 ring-2 ring-violet-400/50 shadow-[0_10px_24px_rgba(139,92,246,0.22)]'
-                            : 'bg-slate-950 border-slate-700 hover:border-yellow-400/80 hover:-translate-y-0.5'
-                        }`}
+                            ? 'border-violet-400 ring-2 ring-violet-400/50 shadow-[0_12px_28px_rgba(139,92,246,0.22)]'
+                            : 'border-slate-700 hover:border-yellow-400/80 hover:-translate-y-0.5'
+                        } ${sortedPopupVideoPeers.length === 3 && index === 0 ? 'col-span-2' : ''}`}
                       >
                         {hasLiveSelfVideo ? (
                           <video
@@ -2211,24 +2185,21 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                             className="absolute inset-0 w-full h-full object-cover"
                           />
                         ) : (
-                          <span className="absolute left-1/2 top-[42%] -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-slate-800 border border-slate-700 text-yellow-300 font-display font-black text-lg flex items-center justify-center">
+                          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-full bg-slate-800 border border-slate-700 text-yellow-300 font-display font-black text-2xl flex items-center justify-center">
                             {peer.name[0]}
                           </span>
                         )}
-                        <span className="absolute left-2 bottom-2 right-2 px-2 py-1 rounded-md bg-slate-950/80 border border-white/10 text-[10px] md:text-xs font-display font-black text-white truncate">
-                          {index === 0 ? 'MY CAM' : index === 1 ? 'CAM 4' : index === 2 ? 'CAM 5' : 'OTHER'}
+                        <span className="absolute left-3 bottom-3 px-3 py-1.5 rounded-lg bg-slate-950/80 border border-white/10 text-xs md:text-sm font-display font-black text-white">
+                          @{peer.name}
                         </span>
+                        {isPinned && (
+                          <span className="absolute right-3 top-3 px-2.5 py-1 rounded-lg bg-violet-500 text-white text-[9px] font-mono uppercase tracking-wider">
+                            Pinned
+                          </span>
+                        )}
                       </button>
                     );
                   })}
-                  {Array.from({ length: Math.max(0, 4 - activeVideoPeers.length) }).map((_, index) => (
-                    <div
-                      key={`empty-camera-${index}`}
-                      className="h-[112px] rounded-xl bg-slate-950 border border-slate-700 flex items-center justify-center text-slate-500 font-display font-black text-xs uppercase"
-                    >
-                      Camera Open
-                    </div>
-                  ))}
                 </div>
 
                 <div className="rounded-xl bg-slate-950 border border-slate-700/80 px-2.5 py-2 shrink-0">
