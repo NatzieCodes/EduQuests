@@ -654,7 +654,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
               }}
             >
               {/* When Camera is ON: Pressable Video Feeds of Joined Users at the VERY TOP of the Chat */}
-              {videoEnabled && (
+              {(
                 <div
                   data-testid="chat-top-video-strip"
                   className="px-3 pt-2.5 pb-2 bg-slate-950/55 border-b border-white/15 shrink-0"
@@ -949,14 +949,12 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
 
           {/* =================================================================
               PROFILE SECTION CARD:
-              - Entire card padding is pressable with clear hover lift, golden ring glow, and cursor-pointer affordance
-              - Strong visual hierarchy between Primary Profile Trigger (Top) and Secondary Account Actions (Bottom)
+              - Shows the student identity only
+              - Keeps Logout visible as the account action
              ================================================================= */}
           <div
             data-testid="profile-card-surface"
-            onClick={() => handleOpenAuthModal('profile')}
-            className="group/profile w-full rounded-3xl bg-white/95 hover:bg-gradient-to-br hover:from-amber-50/95 hover:via-white hover:to-yellow-50/90 text-slate-900 border-2 border-slate-200/90 hover:border-yellow-400 hover:ring-4 hover:ring-yellow-400/25 p-4 shadow-[0_12px_40px_rgba(0,0,0,0.18)] hover:shadow-[0_20px_48px_rgba(250,204,21,0.38)] hover:-translate-y-1 active:translate-y-0 transition-all duration-200 relative overflow-hidden cursor-pointer"
-            title="Click anywhere on this Profile card to open your 3D Character, Customization & Friends"
+            className="group/profile w-full rounded-3xl bg-white/95 text-slate-900 border-2 border-slate-200/90 p-4 shadow-[0_12px_40px_rgba(0,0,0,0.18)] relative overflow-hidden"
           >
             {/* Level Badge Header */}
             <div className="absolute top-0 right-0 px-3.5 py-1 bg-slate-900 group-hover/profile:bg-gradient-to-r group-hover/profile:from-yellow-300 group-hover/profile:via-amber-400 group-hover/profile:to-yellow-500 text-yellow-300 group-hover/profile:text-slate-950 font-display font-black text-[10px] tracking-widest rounded-bl-2xl uppercase shadow-sm flex items-center gap-1 transition-colors">
@@ -964,70 +962,21 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
               <span>LV. 40 · SCHOLAR</span>
             </div>
 
-            {/* Primary Action Area: View Full 3D Profile */}
-            <button
-              type="button"
-              data-testid="player-info-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleOpenAuthModal('profile');
-              }}
-              className="w-full text-left flex items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-200/90 rounded-xl transition-colors cursor-pointer focus:outline-none"
-            >
+            <div className="w-full flex items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-200/90">
               <div className="min-w-0 pr-2">
                 <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-amber-700 uppercase tracking-wider">
                   <UserCheck className="w-3.5 h-3.5 text-amber-600" />
                   <span>01 · SCHOLAR PROFILE</span>
                 </div>
                 <div className="text-base font-display font-black text-slate-900 leading-tight mt-0.5 group-hover/profile:text-amber-700 transition-colors truncate">
-                  {isLoggedIn ? `@${studentName}` : 'Guest Student'}{' '}
-                  <span className="text-xs font-mono font-semibold text-slate-500">
-                    · {isLoggedIn ? blockSection : 'Guest'}
-                  </span>
-                </div>
-                <div className="text-[11px] text-slate-600 mt-1 flex items-center gap-1.5">
-                  <span>3D Avatar, Outfit &amp; Friends</span>
+                  {isLoggedIn ? `@${studentName}` : 'Guest Student'}
                 </div>
               </div>
-
-              {/* Explicit Pressable Callout Pill */}
-              <span className="shrink-0 mt-3 px-2.5 py-1.5 rounded-xl bg-amber-100/90 group-hover/profile:bg-yellow-400 text-amber-950 group-hover/profile:text-slate-950 font-display font-black text-[11px] flex items-center gap-1 shadow-2xs group-hover/profile:shadow-sm group-hover/profile:translate-x-0.5 transition-all">
-                <span>View Profile</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </span>
-            </button>
-
-            {/* Secondary Account Actions Footer (Subdued Neutral Hierarchy so it doesn't compete with Primary Profile Action) */}
-            <div
-              className="grid grid-cols-3 gap-2"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                type="button"
-                data-testid="player-login-btn"
-                onClick={() => handleOpenAuthModal('login')}
-                className="py-2 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-900 text-slate-700 hover:text-yellow-300 border border-slate-200/90 hover:border-slate-900 font-display font-extrabold text-[11px] flex items-center justify-center gap-1.5 transition-all hover:-translate-y-0.5 active:translate-y-0 whitespace-nowrap cursor-pointer"
-              >
-                <LogIn className="w-3.5 h-3.5" />
-                <span>Login</span>
-              </button>
-
-              <button
-                type="button"
-                data-testid="player-register-btn"
-                onClick={() => handleOpenAuthModal('register')}
-                className="py-2 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-900 text-slate-700 hover:text-yellow-300 border border-slate-200/90 hover:border-slate-900 font-display font-extrabold text-[11px] flex items-center justify-center gap-1.5 transition-all hover:-translate-y-0.5 active:translate-y-0 whitespace-nowrap cursor-pointer"
-              >
-                <UserPlus className="w-3.5 h-3.5" />
-                <span>Register</span>
-              </button>
-
               <button
                 type="button"
                 data-testid="player-logout-btn"
                 onClick={onLogoutStudent}
-                disabled={!isLoggedIn}
-                className="py-2 px-2.5 rounded-xl bg-white hover:bg-rose-50 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-200 hover:border-rose-300 text-slate-500 hover:text-rose-600 font-display font-bold text-[11px] flex items-center justify-center gap-1.5 transition-all hover:-translate-y-0.5 active:translate-y-0 whitespace-nowrap cursor-pointer"
+                className="shrink-0 py-2 px-3 rounded-xl bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-300 text-slate-600 hover:text-rose-600 font-display font-bold text-[11px] flex items-center justify-center gap-1.5 transition-all hover:-translate-y-0.5 active:translate-y-0 whitespace-nowrap cursor-pointer"
               >
                 <LogOut className="w-3.5 h-3.5" />
                 <span>Logout</span>
@@ -1547,7 +1496,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
             <div className="px-6 py-4 bg-slate-900 text-white border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 shrink-0">
               <div>
                 <div className="text-[10px] font-mono font-bold text-yellow-300 uppercase tracking-widest">
-                  Scholar Identity · 3D Avatar &amp; Live Socials
+                  Scholar Identity
                 </div>
                 <h2 id="auth-modal-title" className="text-lg sm:text-xl font-display font-black text-white">
                   {authModalMode === 'profile'
@@ -2150,13 +2099,13 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                       : sortedPopupVideoPeers.length === 2
                         ? 'grid-cols-2 grid-rows-1'
                         : sortedPopupVideoPeers.length === 3
-                          ? 'grid-cols-2 grid-rows-2'
+                          ? 'grid-cols-3 grid-rows-1'
                           : sortedPopupVideoPeers.length === 4
                             ? 'grid-cols-2 grid-rows-2'
                             : 'grid-cols-3 grid-rows-2'
                   }`}
                 >
-                  {sortedPopupVideoPeers.map((peer, index) => {
+                  {sortedPopupVideoPeers.map((peer) => {
                     const isSelf = peer.id === localPlayerId || peer.id === 'local-player';
                     const isPinned = peer.id === selectedVideoPeer?.id;
                     const hasLiveSelfVideo = isSelf && videoEnabled && localMediaStream;
@@ -2168,7 +2117,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                           isPinned
                             ? 'border-violet-400 ring-2 ring-violet-400/50 shadow-[0_12px_28px_rgba(139,92,246,0.22)]'
                             : 'border-slate-700 hover:border-yellow-400/80 hover:-translate-y-0.5'
-                        } ${sortedPopupVideoPeers.length === 3 && index === 0 ? 'col-span-2' : ''}`}
+                        }`}
                       >
                         <button
                           type="button"
@@ -2188,9 +2137,17 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                             className="absolute inset-0 w-full h-full object-cover"
                           />
                         ) : (
-                          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-full bg-slate-800 border border-slate-700 text-yellow-300 font-display font-black text-2xl flex items-center justify-center">
-                            {peer.name[0]}
-                          </span>
+                          <>
+                            <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-full bg-slate-800 border border-slate-700 text-yellow-300 font-display font-black text-2xl flex items-center justify-center">
+                              {peer.name[0]}
+                            </span>
+                            {isSelf && !videoEnabled && (
+                              <span className="absolute left-1/2 top-[calc(50%-64px)] -translate-x-1/2 px-3 py-1.5 rounded-lg bg-slate-950/90 border border-slate-600 text-white text-[10px] font-mono flex items-center gap-1.5">
+                                <VideoOff className="w-3.5 h-3.5 text-rose-300" />
+                                Camera turned off
+                              </span>
+                            )}
+                          </>
                         )}
                         <span className="absolute left-3 bottom-3 px-3 py-1.5 rounded-lg bg-slate-950/80 border border-white/10 text-xs md:text-sm font-display font-black text-white">
                           @{peer.name}
@@ -2218,11 +2175,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                             type="button"
                             data-testid={`popup-video-toggle-${peer.id}`}
                             onClick={() => {
-                              setVideoEnabled((prev) => {
-                                const next = !prev;
-                                if (!next) setExpandedVideoPeerId(null);
-                                return next;
-                              });
+                              setVideoEnabled((prev) => !prev);
                             }}
                             aria-label={videoEnabled ? `Turn Off Camera for ${peer.name}` : `Turn On Camera for ${peer.name}`}
                             className={`w-9 h-9 rounded-full border flex items-center justify-center shadow-lg transition-all cursor-pointer ${
@@ -2319,7 +2272,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                       </button>
                     </div>
                   )}
-                  <div className="mb-2 flex items-center gap-1.5 overflow-x-auto">
+                  <div className="mb-2 grid grid-cols-5 gap-1.5 w-full">
                     {[
                       { type: 'photo' as const, label: 'Photo', icon: ImageIcon, color: 'text-yellow-600' },
                       { type: 'video' as const, label: 'Video', icon: Film, color: 'text-amber-600' },
@@ -2331,7 +2284,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                         key={type}
                         type="button"
                         onClick={() => handleQuickShareAttachment(type)}
-                        className="h-8 px-2.5 rounded-lg bg-white hover:bg-amber-50 border border-slate-300 hover:border-amber-400 text-slate-700 text-[11px] font-display font-bold flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer"
+                        className="h-9 min-w-0 px-1.5 rounded-lg bg-white hover:bg-amber-50 border border-slate-300 hover:border-amber-400 text-slate-700 text-[11px] font-display font-bold flex items-center justify-center gap-1.5 w-full transition-colors cursor-pointer"
                         title={`Share ${label}`}
                       >
                         <Icon className={`w-3.5 h-3.5 ${color}`} />
