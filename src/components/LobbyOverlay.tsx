@@ -2203,6 +2203,45 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                 </div>
 
                 <div className="rounded-xl bg-slate-950 border border-slate-700/80 px-2.5 py-2 shrink-0">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <span className="text-[9px] font-mono uppercase tracking-wider text-slate-400">Camera Controls</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        data-testid="popup-mic-toggle"
+                        onClick={() => setMicEnabled((prev) => !prev)}
+                        aria-label={micEnabled ? 'Mute Microphone' : 'Unmute Microphone'}
+                        aria-pressed={micEnabled}
+                        className={`w-9 h-9 rounded-full border flex items-center justify-center shadow-md transition-all cursor-pointer ${
+                          micEnabled
+                            ? 'bg-yellow-400 text-slate-950 border-yellow-200'
+                            : 'bg-slate-800 text-white border-slate-600 hover:bg-slate-700'
+                        }`}
+                      >
+                        {micEnabled ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
+                      </button>
+                      <button
+                        type="button"
+                        data-testid="popup-video-toggle"
+                        onClick={() => {
+                          setVideoEnabled((prev) => {
+                            const next = !prev;
+                            if (!next) setExpandedVideoPeerId(null);
+                            return next;
+                          });
+                        }}
+                        aria-label={videoEnabled ? 'Turn Off Camera' : 'Turn On Camera'}
+                        aria-pressed={videoEnabled}
+                        className={`w-9 h-9 rounded-full border flex items-center justify-center shadow-md transition-all cursor-pointer ${
+                          videoEnabled
+                            ? 'bg-amber-400 text-slate-950 border-yellow-200'
+                            : 'bg-slate-800 text-white border-slate-600 hover:bg-slate-700'
+                        }`}
+                      >
+                        {videoEnabled ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
                   {activeAttachMenu === 'link' && (
                     <div className="mb-2 flex items-center gap-2">
                       <input
