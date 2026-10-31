@@ -327,6 +327,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
   const [expandedAttachment, setExpandedAttachment] = useState<LobbyChatMessage['attachment'] | null>(null);
   const [battleModeDrawerOpen, setBattleModeDrawerOpen] = useState(false);
   const [challengeMode, setChallengeMode] = useState<GameMode>('pvp');
+  const [receivedBattleChallenge, setReceivedBattleChallenge] = useState<GameMode | null>(null);
 
   // Microphone remains muted on lobby/room entry and only starts after the user enables it.
   useEffect(() => {
@@ -557,7 +558,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
       type: 'notes',
       title: 'Battle Challenge',
       url: `battle://${challengeMode}`,
-      subtitle: `${modeName} · Click to choose study file`,
+      subtitle: `${modeName} · Click to open battle setup`,
     });
     setBattleModeDrawerOpen(false);
   };
@@ -573,8 +574,9 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
     if (challenge && challenge in BATTLE_MODES) {
       onSelectMode(challenge);
       setChallengeMode(challenge);
+      setReceivedBattleChallenge(challenge);
     }
-    onOpenInventoryModal(false);
+    setBattleModeDrawerOpen(false);
   };
 
   return (
@@ -1148,6 +1150,24 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
 
           {/* MAIN BATTLE SECTION CARD (3 Clear Action Levels) */}
           <div className="w-full rounded-3xl bg-white/95 text-slate-900 border border-slate-200/90 p-4 shadow-[0_12px_40px_rgba(0,0,0,0.18)] overflow-hidden cursor-default">
+            {receivedBattleChallenge && (
+              <div className="mb-3 flex items-center justify-between gap-2 rounded-xl border border-amber-300 bg-gradient-to-r from-yellow-100 to-amber-50 px-3 py-2">
+                <div className="min-w-0">
+                  <div className="text-[9px] font-mono font-black uppercase tracking-widest text-amber-700">Battle challenge received</div>
+                  <div className="truncate text-xs font-display font-black text-slate-900">
+                    {BATTLE_MODES[receivedBattleChallenge].title} · Review your study deck and start
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setReceivedBattleChallenge(null)}
+                  className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white text-slate-500 hover:text-slate-900 border border-slate-200 cursor-pointer"
+                  aria-label="Dismiss battle challenge"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
             {/* Header: Section Label + Active Mode vs Active Topic */}
             <div className="flex items-start justify-between pb-2.5 border-b border-slate-200">
               <div>
