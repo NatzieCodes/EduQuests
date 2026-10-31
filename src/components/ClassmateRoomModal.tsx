@@ -137,14 +137,21 @@ export const ClassmateRoomModal: React.FC<ClassmateRoomModalProps> = ({
     <div className="fixed inset-0 z-[120] flex items-center justify-center pointer-events-auto bg-slate-950/75 p-3 backdrop-blur-sm sm:p-6" onMouseDown={(event) => {
       if (event.target === event.currentTarget) onClose();
     }}>
-      <div className="flex h-[min(820px,92vh)] w-full max-w-6xl flex-col overflow-hidden rounded-[24px] border-4 border-white bg-white shadow-2xl select-text">
-        <div className="flex items-center justify-between bg-slate-900 px-5 py-4 text-white sm:px-7">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-amber-400">EduQuests</p>
-            <h2 className="text-xl font-black uppercase tracking-tight sm:text-2xl">Room Directory</h2>
+      <div className="flex h-[82vh] max-h-[760px] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white text-slate-900 shadow-[0_24px_70px_rgba(0,0,0,0.35)] select-text">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-800 bg-slate-900 px-6 py-4 text-white">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-yellow-300 via-amber-400 to-yellow-500 text-slate-950">
+              <Users size={20} />
+            </div>
+            <div>
+              <p className="text-[11px] font-mono font-bold uppercase tracking-wider text-yellow-300">
+                Multiplayer Rooms · {availableRooms.length} Available
+              </p>
+              <h2 className="text-lg font-display font-black leading-tight sm:text-xl">Room Directory · Join &amp; Create</h2>
+            </div>
           </div>
-          <button onClick={onClose} className="grid h-10 w-10 place-items-center rounded-full border border-white/20 bg-white/10 transition hover:bg-white hover:text-slate-900" aria-label="Close room directory">
-            <X size={20} strokeWidth={3} />
+          <button type="button" onClick={onClose} className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full bg-slate-800 text-slate-300 transition-colors hover:bg-slate-700 hover:text-white" aria-label="Close Room Directory">
+            <X size={18} />
           </button>
         </div>
 
@@ -156,16 +163,16 @@ export const ClassmateRoomModal: React.FC<ClassmateRoomModalProps> = ({
         )}
 
         <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[minmax(0,1.7fr)_340px] lg:overflow-hidden">
-          <section className="min-h-0 bg-slate-50 p-4 sm:p-6 lg:overflow-y-auto">
-            <form onSubmit={handleDirectJoin} className="mb-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <section className="min-h-0 overflow-y-auto bg-slate-50 p-4 sm:p-5">
+            <form onSubmit={handleDirectJoin} className="mb-4 rounded-2xl border border-slate-200 bg-white p-4">
               <div className="mb-3 flex items-center gap-2 text-sm font-black text-slate-800">
                 <KeyRound size={17} className="text-amber-500" />
                 JOIN WITH ROOM CODE
               </div>
               <div className="grid gap-2 sm:grid-cols-[1fr_150px_auto]">
-                <input value={directCodeInput} onChange={(e) => setDirectCodeInput(e.target.value.toUpperCase())} placeholder="ROOM CODE" className="h-11 rounded-xl border-2 border-slate-200 px-3 text-sm font-black uppercase outline-none focus:border-amber-400" />
-                <input value={directPasswordInput} onChange={(e) => setDirectPasswordInput(e.target.value)} placeholder="Password" className="h-11 rounded-xl border-2 border-slate-200 px-3 text-sm font-bold outline-none focus:border-amber-400" />
-                <button className="h-11 rounded-xl bg-amber-400 px-5 text-sm font-black text-slate-950 shadow-[0_3px_0_#b45309] transition hover:bg-yellow-300 active:translate-y-[2px] active:shadow-none">JOIN</button>
+                <input value={directCodeInput} onChange={(e) => setDirectCodeInput(e.target.value.toUpperCase())} placeholder="ROOM CODE" className="h-11 rounded-lg border border-slate-300 bg-white px-3 text-xs font-black uppercase outline-none focus:border-amber-500" />
+                <input value={directPasswordInput} onChange={(e) => setDirectPasswordInput(e.target.value)} placeholder="Password" className="h-11 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold outline-none focus:border-amber-500" />
+                <button className="h-11 cursor-pointer rounded-lg bg-slate-900 px-5 text-xs font-black text-yellow-300 transition hover:bg-slate-800">JOIN</button>
               </div>
             </form>
 
@@ -193,7 +200,7 @@ export const ClassmateRoomModal: React.FC<ClassmateRoomModalProps> = ({
                     </div>
                     <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
                       <span className="flex items-center gap-1 text-xs font-black text-slate-600"><Users size={14} /> {memberCount}/{MAX_ROOM_LIMIT}</span>
-                      <button disabled={full && !current} onClick={() => handleSelectJoinRoom(room)} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-black text-white disabled:cursor-not-allowed disabled:opacity-40">
+                      <button disabled={full && !current} onClick={() => handleSelectJoinRoom(room)} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-black text-yellow-300 disabled:cursor-not-allowed disabled:opacity-40">
                         {current ? 'JOINED' : full ? 'FULL' : room.isPrivate ? 'UNLOCK' : 'JOIN'}
                       </button>
                     </div>
@@ -214,21 +221,27 @@ export const ClassmateRoomModal: React.FC<ClassmateRoomModalProps> = ({
             </div>
           </section>
 
-          <aside className="border-l border-slate-200 bg-white p-4 sm:p-5 lg:overflow-y-auto">
-            <form onSubmit={handleCreateRoom} className="rounded-2xl border-2 border-slate-900 bg-amber-400 p-4 shadow-[0_5px_0_#0f172a]">
-              <div className="mb-3 flex items-center gap-2 text-sm font-black text-slate-950"><Plus size={18} /> CREATE A ROOM</div>
-              <label className="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-700">Room name</label>
-              <input value={newRoomName} onChange={(e) => setNewRoomName(e.target.value)} placeholder="Study Squad" className="mb-3 h-11 w-full rounded-xl border-2 border-slate-900 bg-white px-3 text-sm font-bold outline-none" />
-              <label className="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-700">Password <span className="normal-case">(optional)</span></label>
-              <input value={newRoomPassword} onChange={(e) => setNewRoomPassword(e.target.value)} placeholder="Leave blank for public" className="mb-3 h-11 w-full rounded-xl border-2 border-slate-900 bg-white px-3 text-sm font-bold outline-none" />
-              <button className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 text-sm font-black text-white transition hover:bg-slate-800"><Sparkles size={16} /> CREATE ROOM</button>
+          <aside className="border-l border-slate-200 bg-slate-50/60 p-4 lg:overflow-y-auto sm:p-5">
+            <form onSubmit={handleCreateRoom} className="rounded-2xl border border-slate-200 bg-white p-4">
+              <div className="mb-3 flex items-start justify-between gap-2 border-b border-slate-200 pb-3">
+                <div>
+                  <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-amber-700">Create / Add</p>
+                  <div className="mt-0.5 flex items-center gap-2 text-sm font-display font-black text-slate-900"><Plus size={17} className="text-amber-500" /> NEW ROOM</div>
+                </div>
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-yellow-400"><Sparkles size={16} /></div>
+              </div>
+              <label className="mb-1 block text-[10px] font-bold text-slate-700">Room Name *</label>
+              <input value={newRoomName} onChange={(e) => setNewRoomName(e.target.value)} placeholder="Study Squad" className="mb-3 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold outline-none focus:border-amber-500" />
+              <label className="mb-1 block text-[10px] font-bold text-slate-700">Password <span className="font-normal">(optional)</span></label>
+              <input value={newRoomPassword} onChange={(e) => setNewRoomPassword(e.target.value)} placeholder="Leave blank for public" className="mb-3 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold outline-none focus:border-amber-500" />
+              <button className="flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500 text-xs font-display font-black text-slate-950 shadow-md transition hover:from-yellow-200 hover:to-amber-400"><Plus size={16} /> CREATE ROOM</button>
             </form>
 
-            <form onSubmit={handleInvite} className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <form onSubmit={handleInvite} className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
               <div className="mb-3 flex items-center gap-2 text-sm font-black text-slate-900"><UserPlus size={17} className="text-amber-500" /> INVITE PLAYER</div>
               <div className="flex gap-2">
                 <input value={inviteUsernameInput} onChange={(e) => setInviteUsernameInput(e.target.value)} placeholder="Username" className="h-10 min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold outline-none focus:border-amber-400" />
-                <button className="h-10 rounded-xl bg-amber-400 px-3 text-xs font-black text-slate-950">INVITE</button>
+                <button className="h-10 cursor-pointer rounded-lg bg-slate-900 px-3 text-xs font-black text-yellow-300">INVITE</button>
               </div>
             </form>
 
