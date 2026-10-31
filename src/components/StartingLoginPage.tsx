@@ -294,7 +294,7 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
         <section
           data-testid="starting-login-card"
           aria-label="Scholar Login and Registration"
-          className="relative z-20 justify-self-center w-full max-w-[460px] lg:w-[460px] xl:w-[475px] rounded-[28px] bg-white/95 text-slate-900 border border-slate-200/90 shadow-[0_24px_64px_rgba(15,23,42,0.5)] p-6 sm:p-8 flex flex-col gap-4 shrink-0"
+          className="relative z-20 justify-self-start w-full max-w-[460px] lg:w-[460px] xl:w-[475px] rounded-[28px] bg-white/95 text-slate-900 border border-slate-200/90 shadow-[0_24px_64px_rgba(15,23,42,0.5)] p-6 sm:p-8 flex flex-col gap-4 shrink-0 lg:-translate-x-8 xl:-translate-x-12"
         >
           {/* Brand Logo Lockup */}
           <div className="flex flex-col items-center text-center pb-4 border-b border-slate-200/80">
@@ -500,9 +500,9 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
         <section
           data-testid="circular-game-preview"
           aria-label="Game Preview Carousel"
-          className="relative z-20 w-full h-[640px] lg:h-full flex items-center justify-center select-none lg:pr-0 xl:pr-2"
+          className="relative z-20 w-full h-[640px] lg:h-full flex items-center justify-end select-none overflow-visible lg:pr-0 xl:pr-0"
         >
-          <div className="relative w-full max-w-[680px] h-full flex items-center justify-center">
+          <div className="relative w-full max-w-[680px] h-full flex items-center justify-end lg:translate-x-6 xl:translate-x-10">
             {GAME_PREVIEWS.map((item, index) => {
               const orbit = computeCircularPreviewOrbit(index, GAME_PREVIEWS.length, orbitPhase);
               const { isMiddleMaximized, isVisible } = orbit;
