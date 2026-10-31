@@ -137,7 +137,7 @@ export const ClassmateRoomModal: React.FC<ClassmateRoomModalProps> = ({
     <div className="fixed inset-0 z-[120] flex items-center justify-center pointer-events-auto bg-slate-950/75 p-3 backdrop-blur-sm sm:p-6" onMouseDown={(event) => {
       if (event.target === event.currentTarget) onClose();
     }}>
-      <div className="flex h-[82vh] max-h-[760px] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white text-slate-900 shadow-[0_24px_70px_rgba(0,0,0,0.35)] select-text">
+      <div role="dialog" aria-modal="true" aria-labelledby="room-directory-title" className="flex h-[82vh] max-h-[760px] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white text-slate-900 shadow-[0_24px_70px_rgba(0,0,0,0.35)] select-text">
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-800 bg-slate-900 px-6 py-4 text-white">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-yellow-300 via-amber-400 to-yellow-500 text-slate-950">
@@ -147,7 +147,7 @@ export const ClassmateRoomModal: React.FC<ClassmateRoomModalProps> = ({
               <p className="text-[11px] font-mono font-bold uppercase tracking-wider text-yellow-300">
                 Multiplayer Rooms · {availableRooms.length} Available
               </p>
-              <h2 className="text-lg font-display font-black leading-tight sm:text-xl">Room Directory · Join &amp; Create</h2>
+              <h2 id="room-directory-title" className="text-lg font-display font-black leading-tight sm:text-xl">Room Directory · Join &amp; Create</h2>
             </div>
           </div>
           <button type="button" onClick={onClose} className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full bg-slate-800 text-slate-300 transition-colors hover:bg-slate-700 hover:text-white" aria-label="Close Room Directory">
