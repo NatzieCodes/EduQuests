@@ -1043,6 +1043,13 @@ export default function App() {
           setAiModalOpen(false);
           setStartBattleAfterNotes(false);
         }}
+        onLaunchDeck={(deck, durationSec) => {
+          setActiveDeck(deck);
+          setHasCustomNotes(true);
+          setAiModalOpen(false);
+          setStartBattleAfterNotes(false);
+          launchActualBattle(undefined, undefined, durationSec);
+        }}
         onDeckCreated={handleDeckCreated}
       />
 

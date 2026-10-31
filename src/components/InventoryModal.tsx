@@ -40,6 +40,7 @@ interface InventoryModalProps {
   onInviteClassmateUsername: (username: string) => void;
   onClose: () => void;
   onDeckCreated: (deck: QuizDeck, source: string, startBattleNow: boolean, durationSec?: number) => void;
+  onLaunchDeck?: (deck: QuizDeck, durationSec?: number) => void;
   onUpdateDeck?: (deckId: string, title: string, notes: string) => void;
   onDeleteDeck?: (deckId: string) => void;
   onStartBattle?: (durationSec: number) => void;
@@ -53,6 +54,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
   activeDeck,
   onSelectDeck,
   onStartBattle,
+  onLaunchDeck,
   onClose,
   onDeckCreated,
 }) => {
@@ -143,6 +145,14 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
     const cleanNotes = notes.trim();
     const durationSec = getBattleDurationSec();
 
+    if (startBattleAfter && !cleanTitle && !cleanNotes) {
+      if (durationSec === null) return;
+      onSelectDeck(activeDeck);
+      onLaunchDeck?.(activeDeck, durationSec);
+      onClose();
+      return;
+    }
+
     if (!cleanTitle) {
       setErrorMsg('Please enter a Topic Title.');
       return;
@@ -171,7 +181,11 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
         const data = await response.json();
         if (data?.deck) {
           setDeckFolders((current) => ({ ...current, [data.deck.id]: targetFolderId }));
-          onDeckCreated(data.deck, data.source || 'gemini', startBattleAfter, durationSec);
+          if (startBattleAfter) {
+            onLaunchDeck?.(data.deck, durationSec);
+          } else {
+            onDeckCreated(data.deck, data.source || 'gemini', false, durationSec);
+          }
           setLoading(false);
           onClose();
           return;
@@ -195,7 +209,11 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
       questions: fallbackQuestions,
     };
     setDeckFolders((current) => ({ ...current, [localDeck.id]: targetFolderId }));
-    onDeckCreated(localDeck, 'local-notes-parser', startBattleAfter, durationSec);
+    if (startBattleAfter) {
+      onLaunchDeck?.(localDeck, durationSec);
+    } else {
+      onDeckCreated(localDeck, 'local-notes-parser', false, durationSec);
+    }
     setLoading(false);
     onClose();
   };
@@ -575,7 +593,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                   {loading
                     ? 'Generating...'
                     : startBattleAfter
-                    ? 'Save Deck & Launch Battle'
+                    ? 'Launch Battle'
                     : 'Save to Inventory'}
                 </button>
               </div>
