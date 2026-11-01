@@ -62,3 +62,107 @@
   scrollbar-width: thin;
   scrollbar-color: rgba(100, 116, 139, 0.35) transparent;
 }
+
+/* Wizard academy palette from the supplied art direction */
+:root {
+  --wizard-bg: #1A1613;
+  --wizard-button: #2C2219;
+  --wizard-pressed: #453324;
+  --wizard-button-text: #EBE5D8;
+  --wizard-text: #C7BEAF;
+  --wizard-highlight: #E6B325;
+}
+
+/* Shared surfaces */
+.bg-slate-950,
+.bg-slate-950\/85,
+.bg-slate-950\/90,
+.bg-slate-950\/80,
+.bg-slate-900,
+.bg-slate-900\/90,
+.bg-slate-900\/95 {
+  background-color: var(--wizard-bg) !important;
+}
+
+.bg-white,
+.bg-white\/95,
+.bg-white\/90,
+.bg-white\/92 {
+  background-color: var(--wizard-button) !important;
+}
+
+.bg-white\/10 {
+  background-color: rgba(44, 34, 25, 0.72) !important;
+}
+
+.bg-white\/15 {
+  background-color: rgba(69, 51, 36, 0.82) !important;
+}
+
+.bg-slate-100,
+.bg-slate-50 {
+  background-color: var(--wizard-button) !important;
+}
+
+/* Normal, hovered, and pressed button states */
+.bg-yellow-400,
+.bg-yellow-300,
+.bg-amber-400,
+.hover\:bg-yellow-300:hover,
+.hover\:bg-amber-400:hover,
+.active\:bg-yellow-400:active {
+  background-color: var(--wizard-pressed) !important;
+}
+
+.bg-gradient-to-r.from-yellow-300,
+.bg-gradient-to-r.from-amber-400 {
+  background-image: linear-gradient(to right, var(--wizard-pressed), var(--wizard-button)) !important;
+}
+
+.from-yellow-300 { --tw-gradient-from: var(--wizard-pressed) var(--tw-gradient-from-position); }
+.via-amber-400 { --tw-gradient-via: var(--wizard-button) var(--tw-gradient-via-position); }
+.to-yellow-500 { --tw-gradient-to: var(--wizard-pressed) var(--tw-gradient-to-position); }
+.from-yellow-400 { --tw-gradient-from: var(--wizard-highlight) var(--tw-gradient-from-position); }
+.to-amber-500 { --tw-gradient-to: var(--wizard-pressed) var(--tw-gradient-to-position); }
+
+/* Text and border palette */
+.text-white,
+.text-slate-50,
+.text-slate-100 {
+  color: var(--wizard-button-text) !important;
+}
+
+.text-slate-900,
+.text-slate-800,
+.text-slate-700,
+.text-slate-600 {
+  color: var(--wizard-text) !important;
+}
+
+.text-slate-500,
+.text-slate-400 {
+  color: #C7BEAF !important;
+}
+
+.text-yellow-300,
+.text-yellow-200,
+.text-amber-100,
+.text-amber-200,
+.text-amber-700,
+.text-amber-600 {
+  color: var(--wizard-highlight) !important;
+}
+
+.border-white,
+.border-white\/15,
+.border-slate-200,
+.border-slate-300 {
+  border-color: rgba(199, 190, 175, 0.28) !important;
+}
+
+.border-yellow-300,
+.border-yellow-400,
+.border-yellow-400\/60,
+.border-amber-400 {
+  border-color: var(--wizard-highlight) !important;
+}
