@@ -168,12 +168,11 @@ interface StartingLoginPageProps {
 }
 
 export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
-  defaultUsername,
   defaultBlockSection,
   onLoginEnter,
   onRegisterEnter,
 }) => {
-  const [username, setUsername] = useState<string>(defaultUsername || 'Honchkrow93');
+  const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
   const [isRegisterMode, setIsRegisterMode] = useState<boolean>(false);
@@ -231,7 +230,11 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
 
   const handleEnterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanUser = username.trim().replace(/^@/, '') || defaultUsername || 'Honchkrow93';
+    const cleanUser = username.trim().replace(/^@/, '');
+    if (!cleanUser) {
+      setStatusBanner('Enter your username.');
+      return;
+    }
     if (isRegisterMode) {
       if (password.length < 8) {
         setStatusBanner('Password must be at least 8 characters.');
@@ -255,7 +258,11 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
       );
       return;
     }
-    const cleanUser = username.trim().replace(/^@/, '') || defaultUsername || 'Honchkrow93';
+    const cleanUser = username.trim().replace(/^@/, '');
+    if (!cleanUser) {
+      setStatusBanner('Enter your username.');
+      return;
+    }
     if (password.length < 8) {
       setStatusBanner('Password must be at least 8 characters.');
       return;
