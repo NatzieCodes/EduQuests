@@ -1136,7 +1136,6 @@ export default function App() {
         roomCode={roomCode}
         hasRoomOrInvite={hasRoomOrInvite}
         classmates={classmates}
-        availableRooms={availableRooms}
         decks={decks}
         activeDeck={activeDeck}
         onSelectDeck={(deck) => {
@@ -1146,11 +1145,6 @@ export default function App() {
         }}
         onCreateOrJoinRoom={(code) => {
           handleJoinRoomCode(code);
-        }}
-        onJoinRoom={(code) => {
-          handleJoinRoomCode(code);
-          setAiModalOpen(false);
-          setStartBattleAfterNotes(false);
         }}
         onInviteClassmateUsername={(username) =>
           handleSendInviteUsername(username, selectedMode)

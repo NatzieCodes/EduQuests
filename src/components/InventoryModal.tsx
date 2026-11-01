@@ -18,10 +18,7 @@ import {
   Pencil,
   Palette,
   ChevronLeft,
-  Users,
-  Lock,
 } from 'lucide-react';
-import type { AvailableRoomItem } from './ClassmateRoomModal';
 
 interface StudyFolder {
   id: string;
@@ -36,12 +33,10 @@ interface InventoryModalProps {
   roomCode: string;
   hasRoomOrInvite: boolean;
   classmates: ClassmateMember[];
-  availableRooms?: AvailableRoomItem[];
   decks: QuizDeck[];
   activeDeck: QuizDeck;
   onSelectDeck: (deck: QuizDeck) => void;
   onCreateOrJoinRoom: (code: string) => void;
-  onJoinRoom?: (code: string) => void;
   onInviteClassmateUsername: (username: string) => void;
   onClose: () => void;
   onDeckCreated: (deck: QuizDeck, source: string, startBattleNow: boolean, durationSec?: number) => void;
@@ -57,10 +52,8 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
   selectedMode,
   decks,
   activeDeck,
-  availableRooms = [],
   onSelectDeck,
   onStartBattle,
-  onJoinRoom,
   onClose,
   onDeckCreated,
 }) => {
@@ -270,9 +263,6 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                   <Plus className="w-3 h-3" />
                   New Folder
                 </button>
-                <span className="text-[10px] font-mono font-bold text-slate-500 truncate">
-                  Active: <strong className="text-amber-700">{activeDeck.title}</strong>
-                </span>
               </div>
               {createFolderOpen && (
                 <div className="mt-2 flex items-center gap-2">
@@ -450,56 +440,6 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
           </section>
 
           <aside className="min-h-0 overflow-y-auto drawer-scroll bg-slate-50/60 flex flex-col">
-            <div className="px-4 py-3 border-b border-slate-200">
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <div className="text-[10px] font-mono font-bold text-amber-700 uppercase tracking-widest">
-                    {selectedMode.toUpperCase()} ROOMS
-                  </div>
-                  <h3 className="mt-0.5 text-sm font-display font-black text-slate-900">
-                    Available Battle Rooms
-                  </h3>
-                </div>
-                <div className="rounded-full bg-slate-900 px-2.5 py-1 text-[9px] font-mono font-bold text-white">
-                  {availableRooms.filter((room) => room.mode === selectedMode).length} rooms
-                </div>
-              </div>
-              <div className="mt-2 max-h-[180px] overflow-y-auto drawer-scroll space-y-2">
-                {availableRooms
-                  .filter((room) => room.mode === selectedMode)
-                  .map((room) => (
-                    <button
-                      key={room.code}
-                      type="button"
-                      onClick={() => {
-                        onJoinRoom?.(room.code);
-                        onClose();
-                      }}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-left hover:border-amber-400 hover:bg-amber-50 transition-colors cursor-pointer"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-display font-black text-slate-900 truncate">
-                          {room.name}
-                        </span>
-                        {room.isPrivate && <Lock className="w-3.5 h-3.5 text-amber-600 shrink-0" />}
-                      </div>
-                      <div className="mt-1 flex items-center justify-between gap-2 text-[9px] font-mono text-slate-500">
-                        <span className="truncate">HOST · {room.host}</span>
-                        <span className="flex items-center gap-1 shrink-0">
-                          <Users className="w-3 h-3" />
-                          {room.memberCount ?? room.members.length}/{6}
-                        </span>
-                      </div>
-                    </button>
-                  ))}
-                {!availableRooms.some((room) => room.mode === selectedMode) && (
-                  <div className="rounded-xl border border-dashed border-slate-300 py-5 text-center text-[10px] text-slate-500">
-                    No {selectedMode} rooms are open.
-                  </div>
-                )}
-              </div>
-            </div>
-
             <div className="px-4 py-3 border-b border-slate-200 flex items-start justify-between gap-2">
               <div>
                 <div className="text-[10px] font-mono font-bold text-amber-700 uppercase tracking-widest">
@@ -509,13 +449,9 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                   New Quiz Deck
                 </h3>
               </div>
-              <label className="w-9 h-9 rounded-xl bg-slate-900 hover:bg-slate-800 text-white cursor-pointer flex items-center justify-center shrink-0">
-                <Upload className="w-4 h-4 text-yellow-400" />
-                <input type="file" accept=".txt,.md,.pdf,.json" onChange={handleFileUpload} className="hidden" />
-              </label>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-4 space-y-2.5">
+            <form onSubmit={handleSubmit} className="flex-1 min-h-0 p-4 flex flex-col gap-2.5">
               <div className="flex gap-1.5">
                 <button
                   type="button"
@@ -578,12 +514,17 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                 <label className="block text-[10px] font-bold text-slate-700 mb-1">PDF / Lecture Notes *</label>
                 <textarea
                   required
-                  rows={4}
+                  rows={7}
                   value={notes}
                   onChange={(event) => setNotes(event.target.value)}
                   placeholder="Paste notes here..."
                   className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-amber-500 font-mono text-[10px] leading-relaxed resize-none"
                 />
+                <label className="mt-2 w-full h-9 rounded-lg bg-slate-900 hover:bg-slate-800 text-white cursor-pointer flex items-center justify-center gap-2 text-[10px] font-display font-black">
+                  <Upload className="w-3.5 h-3.5 text-yellow-400" />
+                  Upload PDF or Notes File
+                  <input type="file" accept=".txt,.md,.pdf,.json" onChange={handleFileUpload} className="hidden" />
+                </label>
               </div>
 
               {errorMsg && (
