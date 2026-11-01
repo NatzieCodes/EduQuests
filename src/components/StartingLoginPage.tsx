@@ -448,7 +448,7 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
                 type="submit"
                 data-testid="starting-enter-btn"
                 data-start="true"
-                className={`${isRegisterMode ? 'col-span-12' : 'col-span-7'} h-12 px-5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-display font-black text-sm sm:text-base uppercase tracking-wider border border-amber-500/80 shadow-[0_6px_18px_rgba(245,158,11,0.38)] hover:shadow-[0_10px_24px_rgba(245,158,11,0.5)] hover:-translate-y-0.5 active:translate-y-0 transition-all cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap`}
+                className={`${isRegisterMode ? 'col-start-6 col-span-7' : 'col-span-7'} h-12 px-5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-display font-black text-sm sm:text-base uppercase tracking-wider border border-amber-500/80 shadow-[0_6px_18px_rgba(245,158,11,0.38)] hover:shadow-[0_10px_24px_rgba(245,158,11,0.5)] hover:-translate-y-0.5 active:translate-y-0 transition-all cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap`}
               >
                 <span>ENTER</span>
                 <ChevronRight className="w-5 h-5 stroke-[2.5] shrink-0" />
