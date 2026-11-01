@@ -20,39 +20,40 @@ export function createContactShadow(radius = 1.1, opacity = 0.42): THREE.Mesh {
 
 /**
  * Builds one of the 4 playable 3D Heroes (8-12 parts each, bottom-center pivot at y=0)
- * matching the four-hero wizard academy squad.
+ * matching both the Venge.io 4-hero squad and Pokémon GO battle companions.
  */
 export function buildHeroModel(heroId: HeroId): THREE.Group {
   const root = new THREE.Group();
   root.name = `hero_${heroId}`;
   root.add(createContactShadow(0.95, 0.42));
 
-  // Harry Potter-inspired transparent blue wizard styling
+  // Pokémon GO Trainer Shared Toon Materials & Pokéball Helper
   const trainerGlovesMat = new THREE.MeshToonMaterial({ color: 0xfbbf24 });
   const beltMat = new THREE.MeshToonMaterial({ color: 0x18181b });
   const beltBuckleMat = new THREE.MeshToonMaterial({ color: 0xfacc15 });
 
-  // Helper for a glowing wizard wand in hand
-  const createWizardWand = () => {
+  // Helper for Pokémon GO Pokéball in hand
+  const createPokeBall = () => {
     const ballGroup = new THREE.Group();
-    const shaft = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.018, 0.028, 0.32, 10),
-      new THREE.MeshStandardMaterial({ color: 0x4c2e1a, roughness: 0.55 })
+    const bottomHemi = new THREE.Mesh(
+      new THREE.SphereGeometry(0.1, 12, 12, 0, Math.PI * 2, 0, Math.PI * 0.5),
+      new THREE.MeshToonMaterial({ color: 0xf8fafc })
     );
-    shaft.rotation.z = Math.PI / 2;
-    shaft.position.x = 0.14;
-    const spellLight = new THREE.Mesh(
-      new THREE.SphereGeometry(0.055, 12, 12),
-      new THREE.MeshStandardMaterial({
-        color: 0x7dd3fc,
-        emissive: 0x38bdf8,
-        emissiveIntensity: 1.8,
-        transparent: true,
-        opacity: 0.78,
-      })
+    const topHemi = new THREE.Mesh(
+      new THREE.SphereGeometry(0.1, 12, 12, 0, Math.PI * 2, Math.PI * 0.5, Math.PI * 0.5),
+      new THREE.MeshToonMaterial({ color: 0xef4444 })
     );
-    spellLight.position.x = 0.31;
-    ballGroup.add(shaft, spellLight);
+    const band = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.102, 0.102, 0.02, 12),
+      new THREE.MeshToonMaterial({ color: 0x0f172a })
+    );
+    const button = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.035, 0.035, 0.03, 10),
+      new THREE.MeshToonMaterial({ color: 0x67e8f9 })
+    );
+    button.rotation.x = Math.PI / 2;
+    button.position.set(0, 0, 0.09);
+    ballGroup.add(bottomHemi, topHemi, band, button);
     return ballGroup;
   };
 
@@ -147,7 +148,7 @@ export function buildHeroModel(heroId: HeroId): THREE.Group {
     leftGlove.position.set(-0.62, 0.98, 0.15);
     const rightHand = new THREE.Group();
     rightHand.position.set(0.62, 0.98, 0.25);
-    rightHand.add(createWizardWand());
+    rightHand.add(createPokeBall());
     root.add(leftArm, rightArm, leftGlove, rightHand);
 
     // 5. Confident Trainer Head & Spiky Hair
@@ -159,7 +160,7 @@ export function buildHeroModel(heroId: HeroId): THREE.Group {
     root.add(head, hair);
     addTrainerFace(1.88, 0.04, 0xd97706);
   } else if (heroId === 'arcane_scout') {
-    // Mystic Style (Blue Wizard Coat, Scarf, Sleek Boots, Holding Wand)
+    // Blanche Style (Team Mystic Blue Coat, Scarf, Sleek Boots, Holding Pokéball)
     const coatMat = new THREE.MeshToonMaterial({ color: 0x3b82f6 });
     const darkSuitMat = new THREE.MeshToonMaterial({ color: 0x1e1b4b });
     const scarfMat = new THREE.MeshToonMaterial({ color: 0xf8fafc });
@@ -187,7 +188,7 @@ export function buildHeroModel(heroId: HeroId): THREE.Group {
     scarf.rotation.x = 0.4;
     root.add(scarf);
 
-    // 4. Arms and wand hand
+    // 4. Arms & Pokéball Hand
     const armGeo = new THREE.CapsuleGeometry(0.1, 0.52, 6, 10);
     const lArm = new THREE.Mesh(armGeo, coatMat);
     lArm.position.set(-0.48, 1.25, 0.1);
@@ -197,7 +198,7 @@ export function buildHeroModel(heroId: HeroId): THREE.Group {
     rArm.rotation.z = -0.2;
     const ballHolder = new THREE.Group();
     ballHolder.position.set(0.58, 1.05, 0.28);
-    ballHolder.add(createWizardWand());
+    ballHolder.add(createPokeBall());
     root.add(lArm, rArm, ballHolder);
 
     // 5. Head & Sleek Hair
@@ -209,7 +210,7 @@ export function buildHeroModel(heroId: HeroId): THREE.Group {
     root.add(head, hair);
     addTrainerFace(1.9, 0.04, 0x0284c7);
   } else if (heroId === 'verdant_warden') {
-    // Valor Style (White and Red Trench Coat, Dark Leggings, Gloves, Wand)
+    // Candela Style (Team Valor White & Red Sporty Trench Coat, Dark Leggings, Gloves, Pokéball)
     const coatMat = new THREE.MeshToonMaterial({ color: 0xf8fafc });
     const redAccent = new THREE.MeshToonMaterial({ color: 0xef4444 });
     const tightMat = new THREE.MeshToonMaterial({ color: 0x18181b });
@@ -233,7 +234,7 @@ export function buildHeroModel(heroId: HeroId): THREE.Group {
     belt.position.set(0, 0.86, 0);
     root.add(coat, redLapel, belt);
 
-    // 3. Arms, gloves, and outstretched wand hand
+    // 3. Arms, Gloves & Outstretched Pokéball Hand
     const armGeo = new THREE.CapsuleGeometry(0.1, 0.5, 6, 10);
     const lArm = new THREE.Mesh(armGeo, coatMat);
     lArm.position.set(-0.48, 1.25, 0.1);
@@ -245,7 +246,7 @@ export function buildHeroModel(heroId: HeroId): THREE.Group {
     rGlove.position.set(0.85, 1.42, 0.42);
     const outstretchedBall = new THREE.Group();
     outstretchedBall.position.set(0.98, 1.48, 0.52);
-    outstretchedBall.add(createWizardWand());
+    outstretchedBall.add(createPokeBall());
     root.add(lArm, rArm, rGlove, outstretchedBall);
 
     // 4. Head & Styled Brown Hair
@@ -257,7 +258,7 @@ export function buildHeroModel(heroId: HeroId): THREE.Group {
     root.add(head, hair);
     addTrainerFace(1.88, 0.04, 0xb91c1c);
   } else {
-    // Lilium Style (Blue Wizard Academy Jacket with Pink Ponytails)
+    // Lilium Style (Elite Pokémon GO Trainer with Pink Ponytails & Sporty Jacket)
     const jacketMat = new THREE.MeshToonMaterial({ color: 0x0284c7 });
     const pinkHairMat = new THREE.MeshToonMaterial({ color: 0xf472b6 });
     const pantMat = new THREE.MeshToonMaterial({ color: 0x1e293b });
@@ -283,7 +284,7 @@ export function buildHeroModel(heroId: HeroId): THREE.Group {
     rArm.position.set(0.44, 1.24, 0.18);
     const ballHolder = new THREE.Group();
     ballHolder.position.set(0.55, 1.02, 0.28);
-    ballHolder.add(createWizardWand());
+    ballHolder.add(createPokeBall());
     root.add(lArm, rArm, ballHolder);
 
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.31, 16, 14), skinMat);
@@ -303,17 +304,17 @@ export function buildHeroModel(heroId: HeroId): THREE.Group {
 }
 
 /**
- * Builds the enemy, guardian, rival, or solo challenge based on active mode.
- * - raid: Towering magical Blue Guardian
- * - pvp / team: House rival wizard and companion
- * - training: Mechanical solo challenge dummy
+ * Builds the Enemy / Raid Boss / PvP Opponent / Training Dummy based on active mode:
+ * - raid: Towering Virizion Finals Titan (Reference Picture 1)
+ * - pvp / team: Zygarde Hound + Rival Classmate Trainer standing behind on the right (Reference Picture 2)
+ * - training: Mechanical Dojo Training Dummy Mk.IV
  */
 export function buildEnemyModel(mode: GameMode): THREE.Group {
   const root = new THREE.Group();
   root.name = `enemy_${mode}`;
 
   if (mode === 'raid') {
-    // Towering magical Blue Guardian
+    // Towering Virizion Finals Titan (Reference Picture 1)
     root.add(createContactShadow(2.2, 0.5));
     const emeraldMat = new THREE.MeshStandardMaterial({ color: 0x84cc16, roughness: 0.38, metalness: 0.15 });
     const creamMat = new THREE.MeshStandardMaterial({ color: 0xecfccb, roughness: 0.45, metalness: 0.1 });
@@ -364,7 +365,7 @@ export function buildEnemyModel(mode: GameMode): THREE.Group {
     rFrill.rotation.z = -0.85;
     root.add(lFrill, rFrill);
 
-    // Guardian head, magical horns, and crimson eyes
+    // Head & Swept-out Virizion Blade Horns + Crimson Eyes
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 16, 14), creamMat);
     head.scale.set(0.88, 0.82, 1.18);
     head.position.set(0, 3.28, 0.65);
@@ -399,7 +400,7 @@ export function buildEnemyModel(mode: GameMode): THREE.Group {
 
     root.add(lHorn, rHorn, crest);
   } else if (mode === 'pvp' || mode === 'team') {
-    // Magical rival companion in front with a house classmate wizard behind
+    // Reference Picture 2: Zygarde 10% Cyber-Hound in front + Rival Classmate Trainer standing behind on the right!
     root.add(createContactShadow(1.25, 0.45));
 
     const obsidianMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.35, metalness: 0.4 });
@@ -415,7 +416,7 @@ export function buildEnemyModel(mode: GameMode): THREE.Group {
       emissiveIntensity: 0.8,
     });
 
-    // Magical rival companion group
+    // Zygarde Hound Group
     const hound = new THREE.Group();
     const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 0.85, 8, 12), obsidianMat);
     body.rotation.x = Math.PI / 2;
@@ -449,7 +450,7 @@ export function buildEnemyModel(mode: GameMode): THREE.Group {
     const chestCore = new THREE.Mesh(new THREE.OctahedronGeometry(0.11, 0), redCoreMat);
     chestCore.position.set(0, 1.05, 0.48);
 
-    // Four magical companion legs with a neon green accent
+    // 4 Hound Legs (Front-left leg is neon green just like Zygarde 10%!)
     const legCoords: [number, number, number, boolean][] = [
       [-0.18, 0.42, 0.36, true],
       [0.18, 0.42, 0.36, false],
@@ -510,7 +511,7 @@ export function buildEnemyModel(mode: GameMode): THREE.Group {
     trainer.add(tL, tR, tTorso, tHead, tHair, tEyeL, tEyeR, tArmL, tArmR, gloveL, gloveR);
     root.add(trainer);
   } else {
-    // Solo Mode: Mechanical Wizard Academy Challenge Dummy
+    // Training Mode: Mechanical Wooden Dojo Training Dummy Mk.IV
     root.add(createContactShadow(1.2, 0.42));
     const oakMat = new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.65, metalness: 0.1 });
     const brassMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.25, metalness: 0.85 });
@@ -1718,3 +1719,5 @@ export function buildStandingStudentModel(options?: {
     pedestalRing,
   };
 }
+
+

@@ -138,10 +138,10 @@ export const HEROES: HeroSpec[] = [
 export const BATTLE_MODES: Record<GameMode, BattleModeSpec> = {
   raid: {
     id: 'raid',
-    title: 'Group Contest',
-    shortTitle: 'GROUP CONTEST',
-    subtitle: 'Co-op Classmate Group Contest',
-    enemyName: 'Blue Guardian',
+    title: 'Raid Battle',
+    shortTitle: 'RAID BOSS',
+    subtitle: 'Co-op Classmate Boss Raid',
+    enemyName: 'Virizion',
     enemyCp: 39601,
     enemyMaxHp: 2400,
     timeLimitSec: 180,
@@ -149,14 +149,14 @@ export const BATTLE_MODES: Record<GameMode, BattleModeSpec> = {
     enemyShields: 0,
     partyOrbs: 6,
     environmentName: 'Academic Gym Stadium (Daylight)',
-    description: 'All students in the room challenge the Blue Guardian simultaneously by answering their own study questions before the 180s timer expires.',
+    description: 'All students in the room attack the towering Finals Raid Boss simultaneously by answering their own study questions before the 180s timer expires.',
   },
   pvp: {
     id: 'pvp',
-    title: '1v1 Contest',
-    shortTitle: '1V1 CONTEST',
+    title: 'PvP Duel',
+    shortTitle: 'PVP 1v1',
     subtitle: '1v1 Classmate Challenge',
-    enemyName: 'House Rival',
+    enemyName: 'Zygarde',
     enemyTrainer: 'Blockmate Marco',
     enemyCp: 1497,
     enemyMaxHp: 650,
@@ -169,8 +169,8 @@ export const BATTLE_MODES: Record<GameMode, BattleModeSpec> = {
   },
   team: {
     id: 'team',
-    title: 'Team Contest',
-    shortTitle: 'TEAM CONTEST',
+    title: 'Team Fight',
+    shortTitle: 'TEAM 3v3',
     subtitle: 'Alpha Block vs Omega Block',
     enemyName: 'Omega Vanguard',
     enemyTrainer: 'Squad Leader Rina',
@@ -185,8 +185,8 @@ export const BATTLE_MODES: Record<GameMode, BattleModeSpec> = {
   },
   training: {
     id: 'training',
-    title: 'Solo Mode',
-    shortTitle: 'SOLO MODE',
+    title: 'Training Mode',
+    shortTitle: 'TRAINING',
     subtitle: 'Solo Study & Dummy Practice',
     enemyName: 'Study Dummy Mk.IV',
     enemyCp: 1000,
@@ -500,7 +500,7 @@ export function calculateQuizDamage(input: DamageCalcInput): DamageCalcResult {
     allyDamage = Math.round(2 * (isChargedMove ? 55 : 30) * valkyrieBoost);
   }
 
-  // Energy gain for wizard charged move meter (0..100)
+  // Energy gain for Pokémon GO style Charged Attack meter (0..100)
   let energyDelta = isChargedMove ? -100 : Math.round(34 + speedBonus * 14);
   if (!isChargedMove && heroId === 'arcane_scout') {
     energyDelta = Math.round(energyDelta * 1.25);
@@ -639,7 +639,7 @@ export function applyBattleTurn(state: BattleCombatState, action: TurnActionInpu
   let nextPlayerOrbs = state.playerOrbs;
   let status: 'active' | 'victory' | 'defeat' = 'active';
 
-  // Solo challenge dummy regenerates upon reaching 0 HP so solo study can continue until the deck finishes or the player exits
+  // Training Dummy regenerates upon reaching 0 HP so solo study can continue until deck finishes or player exits
   if (state.mode === 'training' && nextEnemyHp === 0) {
     nextEnemyHp = state.enemyMaxHp;
     nextEnemyOrbs = Math.max(1, nextEnemyOrbs);
@@ -653,7 +653,7 @@ export function applyBattleTurn(state: BattleCombatState, action: TurnActionInpu
     if (nextPlayerOrbs === 0 || state.mode === 'pvp') {
       status = 'defeat';
     } else {
-      // Respawn the next party guardian in Group Contest or Team Contest mode
+      // Respawn next party Pokémon/Guardian in Raid or Team mode
       nextPlayerHp = state.playerMaxHp;
     }
   }

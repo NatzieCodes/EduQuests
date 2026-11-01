@@ -202,9 +202,6 @@ async function startServer() {
     await pool.query(`ALTER TABLE accounts ALTER COLUMN email DROP NOT NULL`);
     await pool.query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS google_sub VARCHAR(255) UNIQUE`);
     await pool.query(`ALTER TABLE accounts ALTER COLUMN password_hash DROP NOT NULL`);
-    await pool.query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS total_xp INTEGER NOT NULL DEFAULT 0`);
-    await pool.query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS streak INTEGER NOT NULL DEFAULT 0`);
-    await pool.query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS last_active_date DATE`);
   }
 
   if (pool) {
@@ -404,57 +401,6 @@ async function startServer() {
       res.json({ deleted: true });
     } catch {
       res.status(401).json({ error: 'Session expired. Please sign in again.' });
-    }
-  });
-
-  app.get('/api/account/progression', async (req, res) => {
-    if (!pool) return res.status(503).json({ error: 'Account database is not configured.' });
-    try {
-      const token = getBearer(req);
-      if (!token) return res.status(401).json({ error: 'Not signed in.' });
-      const payload = jwt.verify(token, jwtSecret) as jwt.JwtPayload;
-      const result = await pool.query(
-        `SELECT total_xp, streak, last_active_date::text AS last_active_date FROM accounts WHERE id = $1`,
-        [payload.sub]
-      );
-      if (!result.rows[0]) return res.status(401).json({ error: 'Account not found.' });
-      res.json({ progression: result.rows[0] });
-    } catch {
-      res.status(401).json({ error: 'Session expired. Please sign in again.' });
-    }
-  });
-
-  app.post('/api/account/progression', async (req, res) => {
-    if (!pool) return res.status(503).json({ error: 'Account database is not configured.' });
-    try {
-      const token = getBearer(req);
-      if (!token) return res.status(401).json({ error: 'Not signed in.' });
-      const payload = jwt.verify(token, jwtSecret) as jwt.JwtPayload;
-      const amount = Math.min(1000, Math.max(0, Math.floor(Number(req.body?.amount) || 0)));
-      const today = new Date().toISOString().slice(0, 10);
-      const result = await pool.query(
-        `WITH previous AS (
-           SELECT id, total_xp, streak, last_active_date FROM accounts WHERE id = $1
-         )
-         UPDATE accounts a
-         SET total_xp = p.total_xp + $2,
-             streak = CASE
-               WHEN p.last_active_date::text = $3 THEN p.streak
-               WHEN p.last_active_date IS NULL THEN 1
-               WHEN p.last_active_date::date = ($3::date - INTERVAL '1 day') THEN p.streak + 1
-               ELSE 1
-             END,
-             last_active_date = $3::date,
-             updated_at = NOW()
-         FROM previous p
-         WHERE a.id = p.id
-         RETURNING a.total_xp, a.streak, a.last_active_date::text AS last_active_date`,
-        [payload.sub, amount, today]
-      );
-      if (!result.rows[0]) return res.status(401).json({ error: 'Account not found.' });
-      res.json({ progression: result.rows[0] });
-    } catch (error) {
-      res.status(500).json({ error: 'Unable to update progression.' });
     }
   });
 

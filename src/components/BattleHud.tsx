@@ -75,8 +75,8 @@ export const BattleHud: React.FC<BattleHudProps> = ({
       : combat.mode === 'team'
       ? 'Omega Block Squad'
       : combat.mode === 'raid'
-      ? 'Group Contest Guardian'
-      : 'Solo Challenge';
+      ? 'Raid Boss'
+      : 'Training Dummy';
 
   return (
     <div className="fixed inset-0 z-10 pointer-events-none flex flex-col justify-between p-3 md:p-5">
@@ -109,7 +109,7 @@ export const BattleHud: React.FC<BattleHudProps> = ({
               {/* PvP / Team Orbs & 2 Damage Blocks */}
               {(combat.mode === 'pvp' || combat.mode === 'team') && (
                 <div className="flex items-center gap-2.5">
-                  {/* Party contest marks */}
+                  {/* Party Pokéball Orbs */}
                   <div className="flex items-center gap-1" aria-label={`Player Orbs: ${combat.playerOrbs}`}>
                     {[0, 1, 2].map((idx) => (
                       <span
@@ -144,7 +144,7 @@ export const BattleHud: React.FC<BattleHudProps> = ({
             </div>
           </div>
 
-          {/* Wizard Academy exit control and contest block toggle */}
+          {/* Pokémon GO style circular Exit / Run button + PvP Block Toggle */}
           <div className="pointer-events-auto flex items-center gap-2">
             <button
               type="button"
@@ -186,7 +186,7 @@ export const BattleHud: React.FC<BattleHudProps> = ({
           </div>
         </div>
 
-        {/* TOP-CENTER: Wizard Academy countdown timer */}
+        {/* TOP-CENTER: Pokémon GO Raid Circular Orange Countdown Timer */}
         <div className="flex flex-col items-center">
           <div
             className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-amber-500 border-4 border-white shadow-2xl flex flex-col items-center justify-center text-white"
@@ -216,13 +216,13 @@ export const BattleHud: React.FC<BattleHudProps> = ({
           )}
         </div>
 
-        {/* TOP-RIGHT: Classmate / Group Contest Status Card + Compact Utility Controls */}
+        {/* TOP-RIGHT: Classmate / Raid Boss Status Card + Compact Utility Controls */}
         <div className="flex flex-col items-end gap-2">
           <div className="pointer-events-auto rounded-2xl bg-white/92 text-slate-900 px-3.5 py-2 shadow-xl border border-white min-w-[205px] sm:min-w-[240px] text-right">
             {combat.mode === 'raid' && (
               <>
                 <div className="flex items-center justify-between gap-2 mb-2">
-                  <span className="text-[10px] font-mono font-bold uppercase text-sky-700">Group Contest Scoreboard</span>
+                  <span className="text-[10px] font-mono font-bold uppercase text-amber-700">Raid Scoreboard</span>
                   <span className="text-xs font-display font-black text-slate-900">{opponentLabel}</span>
                 </div>
                 <div className="text-[11px] flex items-center justify-between mb-1">
@@ -285,7 +285,7 @@ export const BattleHud: React.FC<BattleHudProps> = ({
             )}
 
             {combat.mode === 'training' && (
-              <div className="text-xs font-display font-black text-slate-800">SOLO MODE · CHALLENGE</div>
+              <div className="text-xs font-display font-black text-slate-800">TRAINING · DUMMY</div>
             )}
           </div>
 
