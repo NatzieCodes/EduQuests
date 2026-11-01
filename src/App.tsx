@@ -32,6 +32,11 @@ import { StartingLoginPage } from './components/StartingLoginPage';
 import { BattleSetupModal } from './components/BattleSetupModal';
 import { soundFX } from './game/sound';
 import { clearAccountToken, getCurrentAccount, loginAccount, registerAccount, saveAccountToken } from './services/auth';
+import {
+  ScholarProgress,
+  createScholarProgress,
+  syncScholarProgress,
+} from './services/progression';
 
 function getOrCreateSessionPlayerId(): string {
   if (typeof window === 'undefined') return 'local-player';
@@ -66,6 +71,8 @@ export default function App() {
   const [studentName, setStudentName] = useState<string>('Honchkrow93');
   const [blockSection, setBlockSection] = useState<string>('BSCS-3A');
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(true);
+  const [progressionAccountId, setProgressionAccountId] = useState<string>('guest');
+  const [scholarProgress, setScholarProgress] = useState<ScholarProgress>(() => createScholarProgress());
   const [selectedHero, setSelectedHero] = useState<HeroId>('shadow_shinobi');
   const [selectedMode, setSelectedMode] = useState<GameMode>('pvp');
 
@@ -209,6 +216,8 @@ export default function App() {
         setStudentName(account.username);
         setBlockSection(account.blockSection || account.block_section || 'BSCS-3A');
         setIsLoggedIn(true);
+        setProgressionAccountId(account.id);
+        syncScholarProgress(account.id, 0, true).then(setScholarProgress).catch(() => {});
       })
       .catch(() => clearAccountToken());
   }, []);
@@ -421,6 +430,9 @@ export default function App() {
           : 0;
       const runScore = finalState.totalDamageDealt * 2 + finalState.correctCount * 150;
       bestScoreRef.current = Math.max(bestScoreRef.current, runScore);
+      void syncScholarProgress(progressionAccountId, isVictory ? 100 : 25, true)
+        .then(setScholarProgress)
+        .catch(() => {});
 
       setRunSnapshot({
         mode: finalState.mode,
@@ -436,7 +448,7 @@ export default function App() {
       document.body.dataset.state = 'gameover';
       setShellState('gameover');
     },
-    []
+    [progressionAccountId]
   );
 
   // Countdown timer during active battle (for Raid, PvP, Team modes)
@@ -489,6 +501,7 @@ export default function App() {
 
       if (isCorrect) {
         soundFX.playFastAttack();
+        void syncScholarProgress(progressionAccountId, 25, true).then(setScholarProgress).catch(() => {});
         setCombatEvent({
           id: Date.now(),
           type: 'player_fast',
@@ -542,6 +555,7 @@ export default function App() {
       localPlayerId,
       showToast,
       finalizeGameOver,
+      progressionAccountId,
     ]
   );
 
@@ -681,6 +695,8 @@ export default function App() {
     try {
       const result = await loginAccount({ username: name, password });
       saveAccountToken(result.token);
+      setProgressionAccountId(result.account.id);
+      syncScholarProgress(result.account.id, 0, true).then(setScholarProgress).catch(() => {});
       setStudentName(result.account.username);
       setBlockSection(result.account.blockSection || result.account.block_section || block);
       setIsLoggedIn(true);
@@ -702,6 +718,8 @@ export default function App() {
         blockSection: block,
       });
       saveAccountToken(result.token);
+      setProgressionAccountId(result.account.id);
+      syncScholarProgress(result.account.id, 0, true).then(setScholarProgress).catch(() => {});
       setStudentName(result.account.username);
       setBlockSection(result.account.blockSection || result.account.block_section || block);
       setIsLoggedIn(true);
@@ -715,6 +733,8 @@ export default function App() {
   const handleLogoutStudent = () => {
     soundFX.playClick();
     clearAccountToken();
+    setProgressionAccountId('guest');
+    setScholarProgress(createScholarProgress());
     setIsLoggedIn(false);
     setHasEnteredLobby(false);
   };
@@ -1013,6 +1033,7 @@ export default function App() {
           onChangeAccentColor={setAccentColor}
           muted={muted}
           onToggleMute={handleToggleMute}
+          scholarProgress={scholarProgress}
         />
       )}
 

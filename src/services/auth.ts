@@ -1,4 +1,4 @@
-export interface EduQuestsAccount {
+﻿export interface EduQuestsAccount {
   id: string;
   username: string;
   blockSection?: string;
@@ -146,7 +146,7 @@ export async function getCurrentAccount() {
     };
   }
   return request<{ account: EduQuestsAccount }>('/api/auth/me', {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Authorization: 'Bearer ' + token },
   });
 }
 
@@ -161,6 +161,8 @@ export async function deleteCurrentAccount() {
   }
   return request<{ deleted: boolean }>('/api/auth/me', {
     method: 'DELETE',
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Authorization: 'Bearer ' + token },
   });
 }
+
+

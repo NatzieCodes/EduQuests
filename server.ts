@@ -202,6 +202,9 @@ async function startServer() {
     await pool.query(`ALTER TABLE accounts ALTER COLUMN email DROP NOT NULL`);
     await pool.query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS google_sub VARCHAR(255) UNIQUE`);
     await pool.query(`ALTER TABLE accounts ALTER COLUMN password_hash DROP NOT NULL`);
+    await pool.query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS total_xp INTEGER NOT NULL DEFAULT 0`);
+    await pool.query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS streak INTEGER NOT NULL DEFAULT 0`);
+    await pool.query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS last_active_date DATE`);
   }
 
   if (pool) {
@@ -399,6 +402,62 @@ async function startServer() {
       const payload = jwt.verify(token, jwtSecret) as jwt.JwtPayload;
       await pool.query(`DELETE FROM accounts WHERE id = $1`, [payload.sub]);
       res.json({ deleted: true });
+    } catch {
+      res.status(401).json({ error: 'Session expired. Please sign in again.' });
+    }
+  });
+
+  app.get('/api/account/progression', async (req, res) => {
+    if (!pool) return res.status(503).json({ error: 'Account database is not configured.' });
+    try {
+      const token = getBearer(req);
+      if (!token) return res.status(401).json({ error: 'Not signed in.' });
+      const payload = jwt.verify(token, jwtSecret) as jwt.JwtPayload;
+      await ensureAccountsTable();
+      const result = await pool.query(
+        `SELECT COALESCE(total_xp, 0) AS total_xp, COALESCE(streak, 0) AS streak,
+                to_char(last_active_date, 'YYYY-MM-DD') AS last_active_date
+         FROM accounts WHERE id = $1`,
+        [payload.sub]
+      );
+      if (!result.rows[0]) return res.status(404).json({ error: 'Account not found.' });
+      res.json({ progression: result.rows[0] });
+    } catch {
+      res.status(401).json({ error: 'Session expired. Please sign in again.' });
+    }
+  });
+
+  app.post('/api/account/progression', async (req, res) => {
+    if (!pool) return res.status(503).json({ error: 'Account database is not configured.' });
+    try {
+      const token = getBearer(req);
+      if (!token) return res.status(401).json({ error: 'Not signed in.' });
+      const payload = jwt.verify(token, jwtSecret) as jwt.JwtPayload;
+      const amount = Math.max(0, Math.floor(Number(req.body?.amount || 0)));
+      const markActive = req.body?.markActive !== false;
+      await ensureAccountsTable();
+      const today = new Date().toISOString().slice(0, 10);
+      const yesterdayDate = new Date();
+      yesterdayDate.setUTCDate(yesterdayDate.getUTCDate() - 1);
+      const yesterday = yesterdayDate.toISOString().slice(0, 10);
+      const result = await pool.query(
+        `UPDATE accounts
+         SET total_xp = COALESCE(total_xp, 0) + $2,
+             streak = CASE
+               WHEN $3::boolean = false THEN COALESCE(streak, 0)
+               WHEN to_char(last_active_date, 'YYYY-MM-DD') = $4 THEN COALESCE(streak, 0)
+               WHEN to_char(last_active_date, 'YYYY-MM-DD') = $5 THEN COALESCE(streak, 0) + 1
+               ELSE 1
+             END,
+             last_active_date = CASE WHEN $3::boolean THEN $4::date ELSE last_active_date END,
+             updated_at = NOW()
+         WHERE id = $1
+         RETURNING COALESCE(total_xp, 0) AS total_xp, COALESCE(streak, 0) AS streak,
+                   to_char(last_active_date, 'YYYY-MM-DD') AS last_active_date`,
+        [payload.sub, amount, markActive, today, yesterday]
+      );
+      if (!result.rows[0]) return res.status(404).json({ error: 'Account not found.' });
+      res.json({ progression: result.rows[0] });
     } catch {
       res.status(401).json({ error: 'Session expired. Please sign in again.' });
     }

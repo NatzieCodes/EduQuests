@@ -47,6 +47,7 @@ import {
   Download,
   Maximize2,
 } from 'lucide-react';
+import { ScholarProgress } from '../services/progression';
 
 export interface BattleInvitation {
   id: string;
@@ -115,6 +116,7 @@ interface LobbyOverlayProps {
   onChangeAccentColor?: (color: string) => void;
   muted: boolean;
   onToggleMute: () => void;
+  scholarProgress: ScholarProgress;
 }
 
 const MAX_ROOM_PLAYERS = 6;
@@ -216,6 +218,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
   onChangeAccentColor,
   muted,
   onToggleMute,
+  scholarProgress,
 }) => {
   const [authModalMode, setAuthModalMode] = useState<'closed' | 'profile' | 'login' | 'register'>('closed');
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -1064,14 +1067,17 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
               <div className="mt-3 min-w-0">
                 <div className="flex items-center justify-between gap-2 mb-1">
                   <span className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider">
-                    LV. 40 · 7 DAY STREAK
+                    LV. {scholarProgress.level} · {scholarProgress.streak} DAY STREAK
                   </span>
                   <span className="text-[10px] font-mono font-bold text-amber-700 tabular-nums whitespace-nowrap">
-                    240,500 / 500,000 XP
+                    {scholarProgress.currentXp} / {scholarProgress.xpToNextLevel} XP
                   </span>
                 </div>
                 <div className="h-2.5 rounded-full bg-slate-200 overflow-hidden">
-                  <div className="h-full w-[48%] rounded-full bg-gradient-to-r from-yellow-400 to-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.35)]" />
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-yellow-400 to-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.35)]"
+                    style={{ width: `${Math.min(100, (scholarProgress.currentXp / scholarProgress.xpToNextLevel) * 100)}%` }}
+                  />
                 </div>
               </div>
             </div>
@@ -1714,7 +1720,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                       <div className="pt-2.5 border-t border-slate-200/90 flex items-end justify-between gap-4">
                         <div>
                           <div className="text-3xl font-display font-black text-amber-600 leading-none tabular-nums">
-                            40
+                            {scholarProgress.level}
                           </div>
                           <div className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest mt-0.5">
                             SCHOLAR LEVEL
@@ -1724,10 +1730,13 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                         <div className="flex-1">
                           <div className="flex items-center justify-between text-[11px] font-mono font-bold text-slate-600 mb-1">
                             <span>{activeOutfitObj.name} · {characterGender.toUpperCase()}</span>
-                            <span className="text-amber-700 tabular-nums">240,500 / 500,000 XP</span>
+                            <span className="text-amber-700 tabular-nums">{scholarProgress.currentXp} / {scholarProgress.xpToNextLevel} XP</span>
                           </div>
                           <div className="w-full h-2.5 rounded-full bg-slate-200 overflow-hidden">
-                            <div className="h-full w-[68%] rounded-full bg-gradient-to-r from-yellow-400 to-amber-500" />
+                            <div
+                              className="h-full rounded-full bg-gradient-to-r from-yellow-400 to-amber-500"
+                              style={{ width: `${Math.min(100, (scholarProgress.currentXp / scholarProgress.xpToNextLevel) * 100)}%` }}
+                            />
                           </div>
                         </div>
                       </div>
@@ -2065,7 +2074,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                         <div className="p-2.5 rounded-xl bg-white border border-slate-200">
                           <div className="text-[10px] font-mono text-slate-500">Total Scholar XP</div>
                           <div className="text-sm font-display font-black text-slate-900 tabular-nums mt-0.5">
-                            240,500 XP
+                            {scholarProgress.totalXp.toLocaleString()} XP
                           </div>
                         </div>
                       </div>
