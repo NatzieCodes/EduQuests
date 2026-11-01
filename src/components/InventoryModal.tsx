@@ -599,7 +599,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                 </div>
                 {selectedMode === 'training' ? (
                   <div className="h-9 px-3 rounded-lg bg-white border border-yellow-300 flex items-center text-xs font-display font-black text-slate-900">
-                    UNTIMED TRAINING
+                    UNTIMED SOLO MODE
                   </div>
                 ) : (
                   <div className="flex items-center rounded-lg bg-white border border-slate-300 focus-within:border-amber-500 px-3">

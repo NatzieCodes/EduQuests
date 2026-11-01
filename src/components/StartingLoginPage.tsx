@@ -34,7 +34,7 @@ const GAME_PREVIEWS: GamePreviewItem[] = [
     title: 'Real-Time 1v1 PvP & Raid Quiz Arena',
     subtitle: 'Fast-Attack Combos, Protect Shields & Charged Specials',
     badge: 'BATTLE ARENA',
-    modeTag: 'PVP & RAID',
+    modeTag: '1V1 & GROUP',
     imageUrl: `${import.meta.env.BASE_URL}assets/previews/preview-battle.png`,
     description:
       'Answer course questions accurately and quickly to unleash 3D Fast Attacks, charge your Special Move, and block rival damage.',
@@ -61,13 +61,13 @@ const GAME_PREVIEWS: GamePreviewItem[] = [
   },
   {
     id: 'world',
-    title: 'Sky Airship Academy & Raid Bosses',
-    subtitle: 'Co-Op Raid Battles & Course Topic Mastery',
-    badge: 'RAID BOSSES',
+    title: 'Wizard Academy & Group Contests',
+    subtitle: 'Co-Op Group Contests & Course Topic Mastery',
+    badge: 'GROUP CONTESTS',
     modeTag: 'CO-OP BOSS',
     imageUrl: `${import.meta.env.BASE_URL}assets/aistudio/image_9acd0d81.png`,
     description:
-      'Team up with classmates from your block section to defeat high-CP Raid Bosses using custom decks from your lecture notes.',
+      'Team up with classmates from your block section to defeat magical challenges using custom decks from your lecture notes.',
   },
 ];
 

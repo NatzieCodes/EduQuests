@@ -47,6 +47,7 @@ import {
   Download,
   Maximize2,
 } from 'lucide-react';
+import type { ScholarProgress } from '../services/progression';
 
 export interface BattleInvitation {
   id: string;
@@ -115,6 +116,7 @@ interface LobbyOverlayProps {
   onChangeAccentColor?: (color: string) => void;
   muted: boolean;
   onToggleMute: () => void;
+  scholarProgress?: ScholarProgress;
 }
 
 const MAX_ROOM_PLAYERS = 6;
@@ -216,6 +218,14 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
   onChangeAccentColor,
   muted,
   onToggleMute,
+  scholarProgress = {
+    level: 1,
+    currentXp: 0,
+    totalXp: 0,
+    xpToNextLevel: 500,
+    streak: 0,
+    lastActiveDate: null,
+  },
 }) => {
   const [authModalMode, setAuthModalMode] = useState<'closed' | 'profile' | 'login' | 'register'>('closed');
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -261,7 +271,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
           id: `fr-${Date.now()}`,
           name: cleaned,
           block: blockSection || 'BSCS-3A',
-          level: 40,
+          level: 1,
         },
         ...prev,
       ]);
@@ -284,7 +294,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
         id: online.id,
         name: online.name,
         block: online.blockSection,
-        level: 40,
+        level: 1,
         status: online.roomCode ? `Online · In Room #${online.roomCode}` : 'Online · In Lobby',
         isOnline: true,
       });
@@ -597,10 +607,10 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
           </div>
           <div className="grid grid-cols-2 gap-2">
             {([
-              ['raid', 'Raid Boss', 'Boss battle'],
-              ['pvp', '1V1 PvP', 'Two-player duel'],
-              ['team', 'Team 3V3', 'Team battle'],
-              ['training', 'Training', 'Practice mode'],
+              ['raid', 'Group Contest', 'Group battle'],
+              ['pvp', '1v1 Contest', 'Two-player duel'],
+              ['team', 'Team Contest', 'Team battle'],
+              ['training', 'Solo Mode', 'Practice mode'],
             ] as const).map(([mode, title, subtitle]) => (
               <button
                 key={mode}
@@ -627,7 +637,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
           TOP ROW: LOGO ON LEFT, CENTER ROOM SQUAD BAR (WHEN IN ROOM), UTILITIES ON RIGHT
          ===================================================================== */}
       <div className="relative w-full flex items-center justify-between gap-2">
-        {/* Left: User-Provided Pokémon-Style EduQuests Logo */}
+        {/* Left: EduQuests Wizard Academy Logo */}
         <div className="pointer-events-auto flex items-center" data-testid="eduquests-logo">
           <img
             src={`${import.meta.env.BASE_URL}assets/aistudio/image_d8bbdfa5.png`}
@@ -935,7 +945,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                   className="h-8 w-full rounded-lg bg-yellow-400 hover:bg-yellow-300 border border-yellow-200 text-[10px] font-display font-black text-slate-950 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <Swords className="h-3.5 w-3.5" />
-                  PVP / BATTLE CHALLENGE
+                  1V1 / BATTLE CHALLENGE
                 </button>
               </div>
               <div className="px-3 pt-2 pb-1 border-t border-white/15 bg-white/5 flex items-center justify-between gap-1 shrink-0">
@@ -1064,14 +1074,17 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
               <div className="mt-3 min-w-0">
                 <div className="flex items-center justify-between gap-2 mb-1">
                   <span className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider">
-                    LV. 40 · 7 DAY STREAK
+                    LV. {scholarProgress.level} · {scholarProgress.streak} DAY STREAK
                   </span>
                   <span className="text-[10px] font-mono font-bold text-amber-700 tabular-nums whitespace-nowrap">
-                    240,500 / 500,000 XP
+                    {scholarProgress.currentXp.toLocaleString()} / {scholarProgress.xpToNextLevel.toLocaleString()} XP
                   </span>
                 </div>
                 <div className="h-2.5 rounded-full bg-slate-200 overflow-hidden">
-                  <div className="h-full w-[48%] rounded-full bg-gradient-to-r from-yellow-400 to-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.35)]" />
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-yellow-400 to-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.35)]"
+                    style={{ width: `${Math.min(100, (scholarProgress.currentXp / scholarProgress.xpToNextLevel) * 100)}%` }}
+                  />
                 </div>
               </div>
             </div>
@@ -1228,7 +1241,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
               <div className="mt-2 text-[11px] text-slate-600 font-mono bg-slate-50 px-3 py-2 rounded-xl border border-slate-200/80">
                 <span className="font-bold text-slate-900">{currentMode.title}:</span>{' '}
                 {selectedMode === 'raid'
-                  ? 'Co-op boss raid with squadmates vs Virizion.'
+                  ? 'Co-op Group Contest with squadmates against the Blue Guardian.'
                   : selectedMode === 'pvp'
                   ? '1v1 quiz duel with 2 protect shields.'
                   : selectedMode === 'team'
@@ -1724,10 +1737,13 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                         <div className="flex-1">
                           <div className="flex items-center justify-between text-[11px] font-mono font-bold text-slate-600 mb-1">
                             <span>{activeOutfitObj.name} · {characterGender.toUpperCase()}</span>
-                            <span className="text-amber-700 tabular-nums">240,500 / 500,000 XP</span>
+                            <span className="text-amber-700 tabular-nums">{scholarProgress.currentXp.toLocaleString()} / {scholarProgress.xpToNextLevel.toLocaleString()} XP</span>
                           </div>
                           <div className="w-full h-2.5 rounded-full bg-slate-200 overflow-hidden">
-                            <div className="h-full w-[68%] rounded-full bg-gradient-to-r from-yellow-400 to-amber-500" />
+                            <div
+                              className="h-full rounded-full bg-gradient-to-r from-yellow-400 to-amber-500"
+                              style={{ width: `${Math.min(100, (scholarProgress.currentXp / scholarProgress.xpToNextLevel) * 100)}%` }}
+                            />
                           </div>
                         </div>
                       </div>
@@ -2065,7 +2081,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                         <div className="p-2.5 rounded-xl bg-white border border-slate-200">
                           <div className="text-[10px] font-mono text-slate-500">Total Scholar XP</div>
                           <div className="text-sm font-display font-black text-slate-900 tabular-nums mt-0.5">
-                            240,500 XP
+                            {scholarProgress.totalXp.toLocaleString()} XP
                           </div>
                         </div>
                       </div>
@@ -2386,7 +2402,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                     className="mb-2 h-9 w-full rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-yellow-300 text-[11px] font-display font-black flex items-center justify-center gap-2 transition-colors cursor-pointer"
                   >
                     <Swords className="w-4 h-4" />
-                    PVP / BATTLE CHALLENGE
+                    1V1 / BATTLE CHALLENGE
                   </button>
                   <div className="mb-2 grid grid-cols-5 gap-1.5 w-full">
                     {[

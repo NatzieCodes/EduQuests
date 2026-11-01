@@ -32,6 +32,7 @@ import { StartingLoginPage } from './components/StartingLoginPage';
 import { BattleSetupModal } from './components/BattleSetupModal';
 import { soundFX } from './game/sound';
 import { clearAccountToken, getCurrentAccount, loginAccount, registerAccount, saveAccountToken } from './services/auth';
+import { ScholarProgress, loadScholarProgress, syncScholarProgress } from './services/progression';
 
 function getOrCreateSessionPlayerId(): string {
   if (typeof window === 'undefined') return 'local-player';
@@ -66,6 +67,8 @@ export default function App() {
   const [studentName, setStudentName] = useState<string>('Honchkrow93');
   const [blockSection, setBlockSection] = useState<string>('BSCS-3A');
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(true);
+  const [scholarProgress, setScholarProgress] = useState<ScholarProgress>(() => loadScholarProgress(localPlayerId));
+  const [progressAccountId, setProgressAccountId] = useState<string>(localPlayerId);
   const [selectedHero, setSelectedHero] = useState<HeroId>('shadow_shinobi');
   const [selectedMode, setSelectedMode] = useState<GameMode>('pvp');
 
@@ -209,6 +212,8 @@ export default function App() {
         setStudentName(account.username);
         setBlockSection(account.blockSection || account.block_section || 'BSCS-3A');
         setIsLoggedIn(true);
+        setProgressAccountId(account.id);
+        syncScholarProgress(account.id).then(setScholarProgress);
       })
       .catch(() => clearAccountToken());
   }, []);
@@ -432,11 +437,12 @@ export default function App() {
         bossHpRemaining: finalState.enemyHp,
         victory: isVictory,
       });
+      syncScholarProgress(progressAccountId, isVictory ? 100 : 25).then(setScholarProgress);
       soundFX.playOutcome(isVictory);
       document.body.dataset.state = 'gameover';
       setShellState('gameover');
     },
-    []
+    [progressAccountId]
   );
 
   // Countdown timer during active battle (for Raid, PvP, Team modes)
@@ -489,6 +495,7 @@ export default function App() {
 
       if (isCorrect) {
         soundFX.playFastAttack();
+        syncScholarProgress(progressAccountId, 25).then(setScholarProgress);
         setCombatEvent({
           id: Date.now(),
           type: 'player_fast',
@@ -540,6 +547,7 @@ export default function App() {
       classmates.length,
       roomCode,
       localPlayerId,
+      progressAccountId,
       showToast,
       finalizeGameOver,
     ]
@@ -684,6 +692,8 @@ export default function App() {
       setStudentName(result.account.username);
       setBlockSection(result.account.blockSection || result.account.block_section || block);
       setIsLoggedIn(true);
+      setProgressAccountId(result.account.id);
+      syncScholarProgress(result.account.id).then(setScholarProgress);
       setHasEnteredLobby(true);
       soundFX.playClick();
     } catch (error: any) {
@@ -705,6 +715,8 @@ export default function App() {
       setStudentName(result.account.username);
       setBlockSection(result.account.blockSection || result.account.block_section || block);
       setIsLoggedIn(true);
+      setProgressAccountId(result.account.id);
+      syncScholarProgress(result.account.id).then(setScholarProgress);
       setHasEnteredLobby(true);
       soundFX.playClick();
     } catch (error: any) {
@@ -968,6 +980,7 @@ export default function App() {
           studentName={studentName}
           blockSection={blockSection}
           isLoggedIn={isLoggedIn}
+          scholarProgress={scholarProgress}
           onLoginStudent={handleLoginStudent}
           onRegisterStudent={handleRegisterStudent}
           onLogoutStudent={handleLogoutStudent}

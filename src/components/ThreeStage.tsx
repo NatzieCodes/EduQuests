@@ -217,7 +217,7 @@ export const ThreeStage: React.FC<ThreeStageProps> = ({
     }
 
     // =========================================================================
-    // STAGE B: Pokémon GO 3D Battle Arena (Reference Pictures 1 & 2)
+    // STAGE B: Transparent Blue Wizard Academy Battle Arena
     // =========================================================================
     const arenaGroup = new THREE.Group();
     arenaGroup.visible = false;
@@ -225,9 +225,11 @@ export const ThreeStage: React.FC<ThreeStageProps> = ({
 
     // 1. Turf Ground Plane (stacked Y offsets >= 0.02 to prevent Z-fighting)
     const turfMat = new THREE.MeshStandardMaterial({
-      color: 0x2e7d32,
+      color: 0x1d4ed8,
       roughness: 0.82,
       metalness: 0.05,
+      transparent: true,
+      opacity: 0.72,
     });
     const turfDisc = new THREE.Mesh(new THREE.CircleGeometry(36, 48), turfMat);
     turfDisc.rotation.x = -Math.PI / 2;
@@ -235,9 +237,9 @@ export const ThreeStage: React.FC<ThreeStageProps> = ({
     turfDisc.receiveShadow = !isSoftwareGl;
     arenaGroup.add(turfDisc);
 
-    // 2. Crisp White Pokémon GO Arena Ring Markings (y = 0.025, polygonOffset enabled)
+    // 2. Blue translucent wizard arena ring markings
     const lineMat = new THREE.MeshBasicMaterial({
-      color: 0xf8fafc,
+      color: 0x38bdf8,
       transparent: true,
       opacity: 0.88,
       polygonOffset: true,
@@ -352,7 +354,7 @@ export const ThreeStage: React.FC<ThreeStageProps> = ({
 
     // 5. Dynamic Combat Actors (Player on Left, Enemy/Boss on Right, Allied Classmates Flanking)
     const playerActorSlot = new THREE.Group();
-    // Positioned in left foreground facing the right/midground boss just like Pokémon GO!
+    // Positioned in the left foreground facing the right/midground guardian
     playerActorSlot.position.set(-1.95, 0, 2.15);
     playerActorSlot.rotation.y = Math.PI * 0.76;
     arenaGroup.add(playerActorSlot);
