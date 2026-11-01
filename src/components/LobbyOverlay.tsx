@@ -595,7 +595,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
   return (
     <div className="fixed inset-0 z-10 pointer-events-none flex flex-col justify-between p-4 md:p-6">
       {battleModeDrawerOpen && (
-        <div className="fixed bottom-5 left-1/2 z-[70] pointer-events-auto w-[min(520px,calc(100vw-32px))] -translate-x-1/2 rounded-2xl border border-amber-300 bg-slate-950 p-3 shadow-[0_18px_50px_rgba(0,0,0,0.55)]">
+        <div className="fixed bottom-5 left-1/2 z-[70] pointer-events-auto w-[min(760px,calc(100vw-32px))] -translate-x-1/2 rounded-2xl border border-cyan-300/70 bg-slate-950 p-4 shadow-[0_18px_50px_rgba(3,105,161,0.38)]">
           <div className="flex items-center justify-between px-1 pb-2">
             <div>
               <div className="text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-yellow-300">Battle Challenge</div>
@@ -605,7 +605,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
               <X className="h-4 w-4" />
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
             {([
               ['raid', 'Group Contest', 'Group battle'],
               ['pvp', '1v1 Contest', 'Two-player duel'],
@@ -616,18 +616,18 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                 key={mode}
                 type="button"
                 onClick={() => setChallengeMode(mode)}
-                className={`rounded-xl border px-3 py-3 text-left transition-all cursor-pointer ${
+                className={`min-h-[64px] min-w-0 rounded-xl border px-2.5 py-3 text-center md:text-left transition-all cursor-pointer ${
                   challengeMode === mode
                     ? 'border-cyan-200 bg-cyan-400 text-slate-950 shadow-[0_4px_0_#075985]'
                     : 'border-white/15 bg-white/10 text-white hover:border-yellow-400/70 hover:bg-white/15'
                 }`}
               >
-                <div className="text-xs font-display font-black">{title}</div>
-                <div className={`mt-0.5 text-[10px] font-mono ${challengeMode === mode ? 'text-slate-700' : 'text-white/60'}`}>{subtitle}</div>
+                <div className="whitespace-nowrap text-[11px] sm:text-xs font-display font-black">{title}</div>
+                <div className={`mt-1 whitespace-nowrap text-[9px] sm:text-[10px] font-mono ${challengeMode === mode ? 'text-slate-700' : 'text-white/60'}`}>{subtitle}</div>
               </button>
             ))}
           </div>
-          <button type="button" onClick={handleSendBattleChallenge} className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500 text-xs font-display font-black text-slate-950 shadow-sm cursor-pointer">
+          <button type="button" onClick={handleSendBattleChallenge} className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500 text-sm font-display font-black text-slate-950 shadow-sm cursor-pointer">
             <Swords className="h-4 w-4" />
             SEND CHALLENGE
           </button>
