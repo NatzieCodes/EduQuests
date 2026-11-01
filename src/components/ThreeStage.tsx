@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { ClassmateMember, GameMode, GameShellState, HEROES, HeroId } from '../game/rules';
 import { buildEnemyModel, buildHeroModel, buildStudyRoomDiorama } from '../game/models3d';
 
@@ -151,6 +152,114 @@ export const ThreeStage: React.FC<ThreeStageProps> = ({
 
     const studyRoom = buildStudyRoomDiorama();
     lobbyGroup.add(studyRoom.root);
+    studyRoom.root.visible = false;
+
+    const lobbyRoomGroup = new THREE.Group();
+    lobbyGroup.add(lobbyRoomGroup);
+
+    const lobbyTableGroup = new THREE.Group();
+    lobbyTableGroup.position.set(0, 0, 0.05);
+    lobbyGroup.add(lobbyTableGroup);
+
+    const tableMaterial = new THREE.MeshStandardMaterial({
+      color: 0x4b2d20,
+      roughness: 0.58,
+      metalness: 0.12,
+    });
+    const chairMaterial = new THREE.MeshStandardMaterial({
+      color: 0x2b1d18,
+      roughness: 0.72,
+      metalness: 0.05,
+    });
+
+    const tableTop = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.16, 1.25), tableMaterial);
+    tableTop.position.y = 1.05;
+    tableTop.castShadow = true;
+    lobbyTableGroup.add(tableTop);
+
+    [-1.55, 1.55].forEach((x) => {
+      [-0.42, 0.42].forEach((z) => {
+        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.05, 0.12), tableMaterial);
+        leg.position.set(x, 0.52, z);
+        leg.castShadow = true;
+        lobbyTableGroup.add(leg);
+      });
+    });
+
+    const addChair = (x: number, z: number, rotationY: number) => {
+      const chair = new THREE.Group();
+      chair.position.set(x, 0, z);
+      chair.rotation.y = rotationY;
+
+      const seat = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.14, 0.72), chairMaterial);
+      seat.position.y = 0.62;
+      seat.castShadow = true;
+      chair.add(seat);
+
+      const back = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.78, 0.12), chairMaterial);
+      back.position.set(0, 1.03, 0.34);
+      back.castShadow = true;
+      chair.add(back);
+
+      [-0.26, 0.26].forEach((legX) => {
+        [-0.26, 0.26].forEach((legZ) => {
+          const leg = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.62, 0.09), chairMaterial);
+          leg.position.set(legX, 0.31, legZ);
+          leg.castShadow = true;
+          chair.add(leg);
+        });
+      });
+
+      lobbyTableGroup.add(chair);
+    };
+
+    // The player sits at the back edge of the table; two guest chairs complete the table.
+    addChair(-1.05, -0.72, Math.PI);
+    addChair(0, -0.72, Math.PI);
+    addChair(1.05, -0.72, Math.PI);
+
+    const seatedCharacter = new THREE.Group();
+    seatedCharacter.position.set(0, 0.28, -0.72);
+    seatedCharacter.rotation.y = 0;
+    seatedCharacter.scale.setScalar(0.56);
+    lobbyTableGroup.add(seatedCharacter);
+
+    const seatedTorso = studyRoom.studentTorso.clone(true);
+    const seatedHead = studyRoom.studentHead.clone(true);
+    seatedTorso.position.set(0, 0.72, 0);
+    seatedHead.position.set(0, 2.24, 0.06);
+    seatedCharacter.add(seatedTorso, seatedHead);
+
+    const lobbyLoader = new FBXLoader();
+    lobbyLoader.setResourcePath(`${import.meta.env.BASE_URL}assets/gryffindor-room/textures/`);
+    lobbyLoader.load(
+      `${import.meta.env.BASE_URL}assets/gryffindor-room/source/GryffindorRoom.fbx`,
+      (roomObject) => {
+        lobbyRoomGroup.clear();
+        roomObject.traverse((child) => {
+          if (!(child instanceof THREE.Mesh)) return;
+          child.castShadow = !isSoftwareGl;
+          child.receiveShadow = !isSoftwareGl;
+          if (child.material instanceof THREE.MeshStandardMaterial || child.material instanceof THREE.MeshPhongMaterial) {
+            child.material.side = THREE.DoubleSide;
+          }
+        });
+
+        const roomBox = new THREE.Box3().setFromObject(roomObject);
+        const roomSize = roomBox.getSize(new THREE.Vector3());
+        const maxDimension = Math.max(roomSize.x, roomSize.y, roomSize.z);
+        const roomScale = maxDimension > 0 ? 12 / maxDimension : 1;
+        roomObject.scale.setScalar(roomScale);
+        roomObject.updateMatrixWorld(true);
+
+        const scaledBox = new THREE.Box3().setFromObject(roomObject);
+        const scaledCenter = scaledBox.getCenter(new THREE.Vector3());
+        roomObject.position.set(-scaledCenter.x, -scaledBox.min.y, -scaledCenter.z);
+        lobbyRoomGroup.add(roomObject);
+      },
+      undefined,
+      (error) => console.warn('Gryffindor room model could not be loaded:', error)
+    );
 
     // Squadmate slots standing beside the player in the lobby (up to 5 peers = 6 room limit)
     const lobbySquadGroup = new THREE.Group();
@@ -541,8 +650,8 @@ export const ThreeStage: React.FC<ThreeStageProps> = ({
         activeAnimType = null;
         animProgress = 0;
         projectileOrb.visible = false;
-        scene.background = new THREE.Color(0x93c5fd);
-        scene.fog = new THREE.FogExp2(0xfbcfe8, 0.01);
+        scene.background = new THREE.Color(0x07111f);
+        scene.fog = new THREE.FogExp2(0x07111f, 0.018);
         hemiLight.color.setHex(0xfff1f2);
         hemiLight.groundColor.setHex(0x451a03);
         keyLight.intensity = 1.9;
