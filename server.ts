@@ -324,7 +324,9 @@ async function startServer() {
       const password = String(req.body?.password || '');
       const confirmPassword = String(req.body?.confirmPassword || password);
       const blockSection = String(req.body?.blockSection || 'BSCS-3A').trim().slice(0, 64);
-      if (!/^[A-Za-z0-9_-]{3,32}$/.test(username)) return res.status(400).json({ error: 'Username must be 3-32 letters, numbers, underscores, or hyphens.' });
+      if (username.length < 3 || username.length > 32 || /[\u0000-\u001F\u007F]/.test(username)) {
+        return res.status(400).json({ error: 'Username must be 3-32 characters and cannot contain control characters.' });
+      }
       if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' });
       if (password !== confirmPassword) return res.status(400).json({ error: 'Passwords do not match.' });
       await ensureAccountsTable();

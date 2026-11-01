@@ -85,7 +85,9 @@ export function clearAccountToken() {
 export async function registerAccount(input: { username: string; password: string; confirmPassword: string; blockSection: string }) {
   if (!usesHostedBackend) {
     if (input.password !== input.confirmPassword) throw new Error('Passwords do not match.');
-    if (!/^[A-Za-z0-9_-]{3,32}$/.test(input.username)) throw new Error('Username must be 3-32 letters, numbers, underscores, or hyphens.');
+    if (input.username.length < 3 || input.username.length > 32 || /[\u0000-\u001F\u007F]/.test(input.username)) {
+      throw new Error('Username must be 3-32 characters and cannot contain control characters.');
+    }
     if (input.password.length < 8) throw new Error('Password must be at least 8 characters.');
 
     const accounts = getLocalAccounts();
