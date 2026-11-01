@@ -161,10 +161,15 @@ async function startServer() {
   const app = express();
   app.use(express.json({ limit: '4mb' }));
 
-  const allowedOrigin = process.env.APP_URL?.replace(/\/$/, '') || '';
+  const allowedOrigins = [
+    process.env.APP_URL?.replace(/\/$/, ''),
+    process.env.FRONTEND_URL?.replace(/\/$/, ''),
+  ].filter((origin): origin is string => Boolean(origin));
   app.use((req, res, next) => {
-    if (allowedOrigin && req.headers.origin && req.headers.origin === allowedOrigin) {
-      res.header('Access-Control-Allow-Origin', allowedOrigin);
+    const requestOrigin = req.headers.origin?.replace(/\/$/, '') || '';
+    const isLocalOrigin = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(requestOrigin);
+    if (requestOrigin && (allowedOrigins.includes(requestOrigin) || isLocalOrigin)) {
+      res.header('Access-Control-Allow-Origin', requestOrigin);
       res.header('Access-Control-Allow-Credentials', 'true');
       res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
       res.header('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
@@ -350,7 +355,7 @@ async function startServer() {
         [username]
       );
       const account = result.rows[0];
-      if (!account || !(await bcrypt.compare(password, account.password_hash))) {
+      if (!account || !account.password_hash || !(await bcrypt.compare(password, account.password_hash))) {
         return res.status(401).json({ error: 'Invalid username or password.' });
       }
       res.json({

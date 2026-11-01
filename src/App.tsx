@@ -695,7 +695,12 @@ export default function App() {
     try {
       if (password.length < 8) throw new Error('Password must be at least 8 characters.');
       if (_confirmPassword && password !== _confirmPassword) throw new Error('Passwords do not match.');
-      const result = await registerAccount({ username: name, password, blockSection: block });
+      const result = await registerAccount({
+        username: name,
+        password,
+        confirmPassword: _confirmPassword || password,
+        blockSection: block,
+      });
       saveAccountToken(result.token);
       setStudentName(result.account.username);
       setBlockSection(result.account.blockSection || result.account.block_section || block);

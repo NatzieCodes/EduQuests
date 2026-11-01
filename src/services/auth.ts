@@ -37,7 +37,7 @@ export function clearAccountToken() {
   localStorage.removeItem(TOKEN_KEY);
 }
 
-export function registerAccount(input: { username: string; password: string; blockSection: string }) {
+export function registerAccount(input: { username: string; password: string; confirmPassword: string; blockSection: string }) {
   return request<{ account: EduQuestsAccount; token: string }>('/api/auth/register', {
     method: 'POST',
     body: JSON.stringify(input),
