@@ -23,6 +23,10 @@ const usesHostedBackend = Boolean(
   !(import.meta.env.VITE_API_URL || '').includes('natziecodes.github.io')
 );
 
+export function usesHostedAuthBackend() {
+  return usesHostedBackend;
+}
+
 function getLocalAccounts(): LocalAccountRecord[] {
   try {
     return JSON.parse(localStorage.getItem(LOCAL_ACCOUNTS_KEY) || '[]') as LocalAccountRecord[];
@@ -164,5 +168,4 @@ export async function deleteCurrentAccount() {
     headers: { Authorization: 'Bearer ' + token },
   });
 }
-
 

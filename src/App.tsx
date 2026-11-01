@@ -704,6 +704,7 @@ export default function App() {
       soundFX.playClick();
     } catch (error: any) {
       showToast(error?.message || 'Unable to sign in.');
+      throw error instanceof Error ? error : new Error(error?.message || 'Unable to sign in.');
     }
   };
 
@@ -727,6 +728,7 @@ export default function App() {
       soundFX.playClick();
     } catch (error: any) {
       showToast(error?.message || 'Unable to create account.');
+      throw error instanceof Error ? error : new Error(error?.message || 'Unable to create account.');
     }
   };
 

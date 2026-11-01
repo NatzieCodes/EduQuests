@@ -6,7 +6,7 @@ import {
   UserPlus,
 } from 'lucide-react';
 import { computeCircularPreviewOrbit } from '../game/rules';
-import { startGoogleLogin } from '../services/auth';
+import { startGoogleLogin, usesHostedAuthBackend } from '../services/auth';
 
 export interface GamePreviewItem {
   id: string;
@@ -228,7 +228,7 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
 
   const resolvedBlockSection = defaultBlockSection || 'BSCS-3A';
 
-  const handleEnterSubmit = (e: React.FormEvent) => {
+  const handleEnterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanUser = username.trim().replace(/^@/, '');
     if (!cleanUser) {
@@ -248,13 +248,21 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
         setStatusBanner('Passwords do not match.');
         return;
       }
-      void onRegisterEnter(cleanUser, resolvedBlockSection, password, confirmPassword);
+      try {
+        await onRegisterEnter(cleanUser, resolvedBlockSection, password, confirmPassword);
+      } catch (error) {
+        setStatusBanner(error instanceof Error ? error.message : 'Unable to create account.');
+      }
     } else {
-      void onLoginEnter(cleanUser, resolvedBlockSection, password);
+      try {
+        await onLoginEnter(cleanUser, resolvedBlockSection, password);
+      } catch (error) {
+        setStatusBanner(error instanceof Error ? error.message : 'Unable to sign in.');
+      }
     }
   };
 
-  const handleRegisterClick = () => {
+  const handleRegisterClick = async () => {
     if (!isRegisterMode) {
       setIsRegisterMode(true);
       setStatusBanner(
@@ -279,7 +287,11 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
       setStatusBanner('Passwords do not match.');
       return;
     }
-    void onRegisterEnter(cleanUser, resolvedBlockSection, password, confirmPassword);
+    try {
+      await onRegisterEnter(cleanUser, resolvedBlockSection, password, confirmPassword);
+    } catch (error) {
+      setStatusBanner(error instanceof Error ? error.message : 'Unable to create account.');
+    }
   };
 
   const handleAlternativeLogin = (provider: 'Gmail' | 'Facebook' | 'GitHub' | 'UE') => {
@@ -367,6 +379,21 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
                 </button>
               )}
             </div>
+
+            {statusBanner && (
+              <div
+                role="alert"
+                className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900"
+              >
+                {statusBanner}
+              </div>
+            )}
+
+            {!usesHostedAuthBackend() && (
+              <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-medium text-slate-600">
+                Accounts are saved only in this browser. They will not sign in on another device or after clearing browser data.
+              </div>
+            )}
 
             {/* USERNAME FIELD */}
             <div>
