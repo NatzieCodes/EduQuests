@@ -31,6 +31,7 @@ import { CharacterCustomizerModal } from './components/CharacterCustomizerModal'
 import { StartingLoginPage } from './components/StartingLoginPage';
 import { BattleSetupModal } from './components/BattleSetupModal';
 import { soundFX } from './game/sound';
+import { clearAccountToken, getCurrentAccount, loginAccount, registerAccount, saveAccountToken } from './services/auth';
 
 function getOrCreateSessionPlayerId(): string {
   if (typeof window === 'undefined') return 'local-player';
@@ -192,6 +193,16 @@ export default function App() {
     },
     [localPlayerId, studentName, blockSection, selectedHero]
   );
+
+  useEffect(() => {
+    getCurrentAccount()
+      .then(({ account }) => {
+        setStudentName(account.username);
+        setBlockSection(account.blockSection || account.block_section || 'BSCS-3A');
+        setIsLoggedIn(true);
+      })
+      .catch(() => clearAccountToken());
+  }, []);
 
   // Mirror shellState to document.body.dataset.state
   useEffect(() => {
@@ -657,24 +668,37 @@ export default function App() {
     handleAnswerQuestion,
   ]);
 
-  const handleLoginStudent = (name: string, block: string) => {
-    soundFX.playClick();
-    setStudentName(name);
-    setBlockSection(block);
-    setIsLoggedIn(true);
-    setHasEnteredLobby(true);
+  const handleLoginStudent = async (name: string, block: string, password = '') => {
+    try {
+      const result = await loginAccount({ username: name, password });
+      saveAccountToken(result.token);
+      setStudentName(result.account.username);
+      setBlockSection(result.account.blockSection || result.account.block_section || block);
+      setIsLoggedIn(true);
+      setHasEnteredLobby(true);
+      soundFX.playClick();
+    } catch (error: any) {
+      showToast(error?.message || 'Unable to sign in.');
+    }
   };
 
-  const handleRegisterStudent = (name: string, block: string) => {
-    soundFX.playClick();
-    setStudentName(name);
-    setBlockSection(block);
-    setIsLoggedIn(true);
-    setHasEnteredLobby(true);
+  const handleRegisterStudent = async (name: string, block: string, password = '', email = '') => {
+    try {
+      const result = await registerAccount({ username: name, email, password, blockSection: block });
+      saveAccountToken(result.token);
+      setStudentName(result.account.username);
+      setBlockSection(result.account.blockSection || result.account.block_section || block);
+      setIsLoggedIn(true);
+      setHasEnteredLobby(true);
+      soundFX.playClick();
+    } catch (error: any) {
+      showToast(error?.message || 'Unable to create account.');
+    }
   };
 
   const handleLogoutStudent = () => {
     soundFX.playClick();
+    clearAccountToken();
     setIsLoggedIn(false);
     setHasEnteredLobby(false);
   };

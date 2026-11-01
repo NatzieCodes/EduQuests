@@ -5,6 +5,9 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { WebSocketServer, WebSocket } from 'ws';
 import { GoogleGenAI, Type } from '@google/genai';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { Pool } from 'pg';
 import {
   ClassmateMember,
   GameMode,
@@ -157,6 +160,147 @@ function removePlayerFromCurrentRoom(ws: WebSocket) {
 async function startServer() {
   const app = express();
   app.use(express.json({ limit: '4mb' }));
+
+  const allowedOrigin = process.env.APP_URL?.replace(/\/$/, '') || '';
+  app.use((req, res, next) => {
+    if (allowedOrigin && req.headers.origin && req.headers.origin === allowedOrigin) {
+      res.header('Access-Control-Allow-Origin', allowedOrigin);
+      res.header('Access-Control-Allow-Credentials', 'true');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      res.header('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
+    }
+    if (req.method === 'OPTIONS') {
+      res.sendStatus(204);
+      return;
+    }
+    next();
+  });
+
+  const pool = process.env.DATABASE_URL ? new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.DATABASE_URL.includes('sslmode=disable') ? false : { rejectUnauthorized: false },
+  }) : null;
+
+  async function ensureAccountsTable() {
+    if (!pool) return;
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS accounts (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        username VARCHAR(32) UNIQUE NOT NULL,
+        email VARCHAR(254) UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        block_section VARCHAR(64) NOT NULL DEFAULT 'BSCS-3A',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+  }
+
+  if (pool) {
+    ensureAccountsTable().catch((error) => console.error('Account table initialization failed:', error));
+  }
+
+  const jwtSecret = process.env.JWT_SECRET || '';
+
+  function accountToken(account: { id: string; username: string; email: string; block_section: string }) {
+    if (!jwtSecret || jwtSecret.length < 32) throw new Error('JWT_SECRET must contain at least 32 characters');
+    return jwt.sign(
+      { sub: account.id, username: account.username, blockSection: account.block_section },
+      jwtSecret,
+      { expiresIn: '30d' }
+    );
+  }
+
+  function getBearer(req: express.Request) {
+    const header = req.headers.authorization;
+    return header?.startsWith('Bearer ') ? header.slice(7) : '';
+  }
+
+  app.post('/api/auth/register', async (req, res) => {
+    if (!pool) return res.status(503).json({ error: 'Account database is not configured.' });
+    try {
+      const username = String(req.body?.username || '').trim().replace(/^@/, '').slice(0, 32);
+      const email = String(req.body?.email || '').trim().toLowerCase().slice(0, 254);
+      const password = String(req.body?.password || '');
+      const blockSection = String(req.body?.blockSection || 'BSCS-3A').trim().slice(0, 64);
+      if (!/^[A-Za-z0-9_-]{3,32}$/.test(username)) return res.status(400).json({ error: 'Username must be 3-32 letters, numbers, underscores, or hyphens.' });
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Enter a valid email address.' });
+      if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+      await ensureAccountsTable();
+      const passwordHash = await bcrypt.hash(password, 12);
+      const result = await pool.query(
+        `INSERT INTO accounts (username, email, password_hash, block_section)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id, username, email, block_section`,
+        [username, email, passwordHash, blockSection]
+      );
+      const account = result.rows[0];
+      res.status(201).json({ account, token: accountToken(account) });
+    } catch (error: any) {
+      if (error?.code === '23505') return res.status(409).json({ error: 'That username or email is already registered.' });
+      console.error('Registration failed:', error);
+      res.status(500).json({ error: 'Unable to create account.' });
+    }
+  });
+
+  app.post('/api/auth/login', async (req, res) => {
+    if (!pool) return res.status(503).json({ error: 'Account database is not configured.' });
+    try {
+      const username = String(req.body?.username || '').trim().replace(/^@/, '').toLowerCase();
+      const password = String(req.body?.password || '');
+      await ensureAccountsTable();
+      const result = await pool.query(
+        `SELECT id, username, email, password_hash, block_section FROM accounts WHERE LOWER(username) = $1`,
+        [username]
+      );
+      const account = result.rows[0];
+      if (!account || !(await bcrypt.compare(password, account.password_hash))) {
+        return res.status(401).json({ error: 'Invalid username or password.' });
+      }
+      res.json({
+        account: {
+          id: account.id,
+          username: account.username,
+          email: account.email,
+          blockSection: account.block_section,
+        },
+        token: accountToken(account),
+      });
+    } catch (error) {
+      console.error('Login failed:', error);
+      res.status(500).json({ error: 'Unable to sign in.' });
+    }
+  });
+
+  app.get('/api/auth/me', async (req, res) => {
+    if (!pool) return res.status(503).json({ error: 'Account database is not configured.' });
+    try {
+      const token = getBearer(req);
+      if (!token) return res.status(401).json({ error: 'Not signed in.' });
+      const payload = jwt.verify(token, jwtSecret) as jwt.JwtPayload;
+      const result = await pool.query(
+        `SELECT id, username, email, block_section FROM accounts WHERE id = $1`,
+        [payload.sub]
+      );
+      if (!result.rows[0]) return res.status(401).json({ error: 'Account not found.' });
+      res.json({ account: result.rows[0] });
+    } catch {
+      res.status(401).json({ error: 'Session expired. Please sign in again.' });
+    }
+  });
+
+  app.delete('/api/auth/me', async (req, res) => {
+    if (!pool) return res.status(503).json({ error: 'Account database is not configured.' });
+    try {
+      const token = getBearer(req);
+      if (!token) return res.status(401).json({ error: 'Not signed in.' });
+      const payload = jwt.verify(token, jwtSecret) as jwt.JwtPayload;
+      await pool.query(`DELETE FROM accounts WHERE id = $1`, [payload.sub]);
+      res.json({ deleted: true });
+    } catch {
+      res.status(401).json({ error: 'Session expired. Please sign in again.' });
+    }
+  });
 
   // Live rooms & online players endpoint
   app.get('/api/rooms', (_req, res) => {

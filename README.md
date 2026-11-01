@@ -69,3 +69,18 @@ npx tsx --test src/game/rules.test.ts
 # Build static bundle for production / GitHub Pages
 npm run build
 ```
+
+## Public Multiplayer and Account Deployment
+
+GitHub Pages can serve the EduQuests interface, but real multiplayer rooms and accounts require the Node/WebSocket server plus a PostgreSQL database.
+
+1. Create a PostgreSQL database in Neon or Render.
+2. Deploy this repository as a Node Web Service on Render using `render.yaml`.
+3. Configure `DATABASE_URL`, `JWT_SECRET`, and `APP_URL`:
+   - `DATABASE_URL`: PostgreSQL connection string.
+   - `JWT_SECRET`: a random secret of at least 32 characters.
+   - `APP_URL`: the public GitHub Pages URL.
+4. For GitHub Pages, set the frontend build environment variable `VITE_API_URL` to the Render service URL and redeploy.
+5. Add a real administrator email to the privacy policy before public release.
+
+The server provides account registration, login, session verification, account deletion, quiz generation, room WebSockets, and the live room directory.

@@ -163,8 +163,8 @@ const UniversityOfTheEastLogoSvg: React.FC<{ className?: string }> = ({ classNam
 interface StartingLoginPageProps {
   defaultUsername: string;
   defaultBlockSection: string;
-  onLoginEnter: (username: string, blockSection: string) => void;
-  onRegisterEnter: (username: string, blockSection: string) => void;
+  onLoginEnter: (username: string, blockSection: string, password: string) => void | Promise<void>;
+  onRegisterEnter: (username: string, blockSection: string, password: string, email: string) => void | Promise<void>;
 }
 
 export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
@@ -174,7 +174,8 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
   onRegisterEnter,
 }) => {
   const [username, setUsername] = useState<string>(defaultUsername || 'Honchkrow93');
-  const [password, setPassword] = useState<string>('••••••••');
+  const [password, setPassword] = useState<string>('');
+  const [email, setEmail] = useState<string>('');
   const [isRegisterMode, setIsRegisterMode] = useState<boolean>(false);
   const [statusBanner, setStatusBanner] = useState<string | null>(null);
 
@@ -232,9 +233,9 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
     e.preventDefault();
     const cleanUser = username.trim().replace(/^@/, '') || defaultUsername || 'Honchkrow93';
     if (isRegisterMode) {
-      onRegisterEnter(cleanUser, resolvedBlockSection);
+      void onRegisterEnter(cleanUser, resolvedBlockSection, password, email);
     } else {
-      onLoginEnter(cleanUser, resolvedBlockSection);
+      void onLoginEnter(cleanUser, resolvedBlockSection, password);
     }
   };
 
@@ -247,18 +248,16 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
       return;
     }
     const cleanUser = username.trim().replace(/^@/, '') || defaultUsername || 'Honchkrow93';
-    onRegisterEnter(cleanUser, resolvedBlockSection);
+    void onRegisterEnter(cleanUser, resolvedBlockSection, password, email);
   };
 
   const handleQuickSocialLogin = (providerLabel: string, presetHandle: string) => {
-    const cleanUser = username.trim().replace(/^@/, '') || presetHandle;
-    setStatusBanner(`Authenticated via ${providerLabel} as @${cleanUser}! Entering lobby...`);
-    onLoginEnter(cleanUser, resolvedBlockSection);
+    void presetHandle;
+    setStatusBanner(`${providerLabel} sign-in is not configured yet. Use your EduQuests username and password.`);
   };
 
   const handleForgotPassword = () => {
-    const targetUser = username.trim().replace(/^@/, '') || 'Honchkrow93';
-    setStatusBanner(`Password recovery link sent to @${targetUser}'s registered student email.`);
+    setStatusBanner('Password recovery requires the public email service to be configured.');
   };
 
   const handlePressPreviewCard = (index: number) => {
@@ -347,6 +346,23 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
                 className="w-full h-12 px-4 bg-white text-slate-900 font-medium text-[15px] rounded-xl border border-slate-300/90 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-400/30 transition-all"
               />
             </div>
+
+            {isRegisterMode && (
+              <div>
+                <label htmlFor="starting-email-input" className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
+                  Student Email
+                </label>
+                <input
+                  id="starting-email-input"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="w-full h-12 px-4 bg-white text-slate-900 font-medium text-[15px] rounded-xl border border-slate-300/90 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-400/30 transition-all"
+                />
+              </div>
+            )}
 
             {/* PASSWORD FIELD */}
             <div>
