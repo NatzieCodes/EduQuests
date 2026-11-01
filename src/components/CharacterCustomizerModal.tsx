@@ -59,7 +59,7 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
     >
       <div className="relative w-full max-w-xl rounded-3xl bg-white/95 text-slate-900 shadow-[0_20px_60px_rgba(0,0,0,0.25)] backdrop-blur-md overflow-hidden flex flex-col max-h-[88vh]">
         {/* Header */}
-        <div className="px-6 pt-5 pb-3.5 bg-blue-700 text-white flex items-center justify-between shrink-0">
+        <div className="px-6 pt-5 pb-3.5 bg-[oklch(0.21_0.04_265.75/_1)] text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-yellow-300 via-amber-400 to-yellow-500 text-slate-950 flex items-center justify-center shadow-sm">
               <Sparkles className="w-5 h-5" />

@@ -734,7 +734,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
               {(
                 <div
                   data-testid="chat-top-video-strip"
-                  className="px-3 pt-2.5 pb-2 bg-blue-700 border-b border-blue-500/60 shrink-0"
+                  className="px-3 pt-2.5 pb-2 bg-[oklch(0.21_0.04_265.75/_1)] border-b border-white/15 shrink-0"
                 >
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="text-[10px] font-display font-extrabold text-white uppercase tracking-wider">
@@ -1192,9 +1192,6 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-[10px] font-mono font-bold text-slate-500 tracking-wider uppercase">
-                  ACTIVE TOPIC
-                </div>
                 <div className="text-xs font-bold text-amber-700 mt-0.5 truncate max-w-[140px]">
                   {activeDeck.title}
                 </div>
@@ -1304,7 +1301,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
           aria-labelledby="settings-modal-title"
         >
           <div className="w-full max-w-lg rounded-3xl bg-white text-slate-900 shadow-[0_24px_70px_rgba(0,0,0,0.35)] overflow-hidden flex flex-col max-h-[88vh]">
-            <div className="px-6 py-4 bg-blue-700 text-white flex items-center justify-between shrink-0">
+            <div className="px-6 py-4 bg-[oklch(0.21_0.04_265.75/_1)] text-white flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-yellow-300 via-amber-400 to-yellow-500 text-slate-950 flex items-center justify-center shadow-sm">
                   <Settings className="w-4 h-4" />
@@ -1456,7 +1453,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
           aria-labelledby="share-modal-title"
         >
           <div className="w-full max-w-lg rounded-3xl bg-white text-slate-900 shadow-[0_24px_70px_rgba(0,0,0,0.35)] overflow-hidden flex flex-col max-h-[88vh]">
-            <div className="px-6 py-4 bg-blue-700 text-white flex items-center justify-between shrink-0">
+            <div className="px-6 py-4 bg-[oklch(0.21_0.04_265.75/_1)] text-white flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-yellow-300 via-amber-400 to-yellow-500 text-slate-950 flex items-center justify-center shadow-sm">
                   <Share2 className="w-4 h-4" />
@@ -1603,7 +1600,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
             } max-h-[90vh] rounded-3xl bg-white text-slate-900 shadow-[0_24px_70px_rgba(0,0,0,0.4)] overflow-hidden flex flex-col`}
           >
             {/* LEVEL 0: Dark Slate Modal Header with Clear Purpose & Segmented Switcher */}
-            <div className="px-6 py-4 bg-blue-700 text-white flex flex-wrap items-center justify-between gap-3 shrink-0">
+            <div className="px-6 py-4 bg-[oklch(0.21_0.04_265.75/_1)] text-white flex flex-wrap items-center justify-between gap-3 shrink-0">
               <div>
                 <div className="text-[10px] font-mono font-bold text-yellow-300 uppercase tracking-widest">
                   Scholar Identity
@@ -1619,7 +1616,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
 
               <div className="flex items-center gap-2.5">
                 {/* Segmented Mode Tabs inside Dark Header Track */}
-                <div className="flex items-center gap-1 p-1 rounded-2xl bg-blue-800">
+                <div className="flex items-center gap-1 p-1 rounded-2xl bg-[oklch(0.21_0.04_265.75/_1)]">
                   <button
                     type="button"
                     onClick={() => setAuthModalMode('profile')}
@@ -2204,7 +2201,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                 data-testid="popup-left-videos"
                 className="md:col-span-8 bg-slate-400 text-white p-3 md:p-4 flex flex-col gap-3 overflow-hidden border-b md:border-b-0 md:border-r border-slate-500/70"
               >
-                <div className="flex items-center justify-between -mx-3 -mt-3 md:-mx-4 md:-mt-4 px-4 py-3 bg-blue-700 shrink-0">
+                <div className="flex items-center justify-between -mx-3 -mt-3 md:-mx-4 md:-mt-4 px-4 py-3 bg-[oklch(0.21_0.04_265.75/_1)] shrink-0">
                   <span className="text-xs font-display font-black uppercase tracking-[0.18em] text-white">Pinned Camera</span>
                   <span className="text-[10px] font-mono text-white/75">{sortedPopupVideoPeers.length} cameras</span>
                 </div>
@@ -2316,7 +2313,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                 data-testid="popup-right-chat"
                 className="md:col-span-4 bg-white flex flex-col min-h-0 overflow-hidden"
               >
-                <div className="px-4 py-3 pr-14 bg-blue-700 text-white flex items-center justify-between shrink-0">
+                <div className="px-4 py-3 pr-14 bg-[oklch(0.21_0.04_265.75/_1)] text-white flex items-center justify-between shrink-0">
                   <div>
                     <div className="text-xs font-display font-black text-white uppercase tracking-wider">
                       Room #{roomCode} Chat Box

@@ -138,7 +138,7 @@ export const ClassmateRoomModal: React.FC<ClassmateRoomModalProps> = ({
       if (event.target === event.currentTarget) onClose();
     }}>
       <div role="dialog" aria-modal="true" aria-labelledby="room-directory-title" className="flex h-[82vh] max-h-[760px] w-full max-w-6xl flex-col overflow-hidden rounded-3xl bg-white text-slate-900 shadow-[0_24px_70px_rgba(0,0,0,0.35)] select-text">
-        <div className="flex shrink-0 items-center justify-between gap-3 bg-blue-700 px-6 py-4 text-white">
+        <div className="flex shrink-0 items-center justify-between gap-3 bg-[oklch(0.21_0.04_265.75/_1)] px-6 py-4 text-white">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-yellow-300 via-amber-400 to-yellow-500 text-slate-950">
               <Users size={20} />

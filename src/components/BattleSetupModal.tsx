@@ -66,7 +66,7 @@ export const BattleSetupModal: React.FC<BattleSetupModalProps> = ({
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-sm" role="dialog" aria-modal="true">
       <div className="flex h-[min(680px,92vh)] w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-white text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.35)]">
-        <header className="flex items-center justify-between bg-blue-700 px-5 py-4 text-white">
+        <header className="flex items-center justify-between bg-[oklch(0.21_0.04_265.75/_1)] px-5 py-4 text-white">
           <div className="flex items-center gap-3">
             <div className="grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-br from-yellow-300 to-amber-500 text-slate-950">
               <Swords className="h-5 w-5" />
