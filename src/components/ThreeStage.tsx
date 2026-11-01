@@ -275,6 +275,8 @@ export const ThreeStage: React.FC<ThreeStageProps> = ({
     const squadModels: THREE.Group[] = [];
     const lobbyLocalGroup = new THREE.Group();
     lobbySofaGroup.add(lobbyLocalGroup);
+    const lobbySoloCharacterGroup = new THREE.Group();
+    lobbyGroup.add(lobbySoloCharacterGroup);
 
     function syncLobbySquad(members: ClassmateMember[], curLocalId: string, localHeroId: HeroId, joined: boolean) {
       lobbySofaGroup.visible = joined;
@@ -287,6 +289,7 @@ export const ThreeStage: React.FC<ThreeStageProps> = ({
       lobbySquadGroup.clear();
       squadModels.length = 0;
       lobbyLocalGroup.clear();
+      lobbySoloCharacterGroup.clear();
 
       if (joined) {
         const localCharacter = buildHeroModel(localHeroId);
@@ -295,6 +298,13 @@ export const ThreeStage: React.FC<ThreeStageProps> = ({
         localCharacter.rotation.y = 0;
         lobbyLocalGroup.add(localCharacter);
         squadModels.push(localCharacter);
+      } else {
+        const soloCharacter = buildHeroModel(localHeroId);
+        soloCharacter.scale.setScalar(0.48);
+        soloCharacter.position.set(-0.82, 0.42, 1.18);
+        soloCharacter.rotation.y = 0;
+        lobbySoloCharacterGroup.add(soloCharacter);
+        squadModels.push(soloCharacter);
       }
 
       peers.forEach((peer, idx) => {
