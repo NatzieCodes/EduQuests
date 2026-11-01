@@ -2,11 +2,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   ChevronRight,
   CheckCircle2,
-  KeyRound,
   LogIn,
   UserPlus,
 } from 'lucide-react';
 import { computeCircularPreviewOrbit } from '../game/rules';
+import { startGoogleLogin } from '../services/auth';
 
 export interface GamePreviewItem {
   id: string;
@@ -267,6 +267,14 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
     void onRegisterEnter(cleanUser, resolvedBlockSection, password, confirmPassword);
   };
 
+  const handleAlternativeLogin = (provider: 'Gmail' | 'Facebook' | 'GitHub' | 'UE') => {
+    if (provider === 'Gmail') {
+      startGoogleLogin();
+      return;
+    }
+    setStatusBanner(`${provider} sign-in is not configured yet.`);
+  };
+
   const handlePressPreviewCard = (index: number) => {
     // Pressing any preview card smoothly moves it into the middle and maximizes it
     targetIndexRef.current = index;
@@ -431,6 +439,35 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
               </button>
             </div>
           </form>
+
+          <div className="mt-4">
+            <div className="relative flex items-center justify-center mb-4">
+              <div className="w-full border-t border-slate-200" />
+              <span className="px-3 bg-white text-[11px] font-semibold uppercase tracking-wider text-slate-400 whitespace-nowrap">
+                Or continue with
+              </span>
+              <div className="w-full border-t border-slate-200" />
+            </div>
+
+            <div className="grid grid-cols-4 gap-3">
+              <button type="button" data-testid="social-login-gmail" onClick={() => handleAlternativeLogin('Gmail')} className="min-h-[70px] rounded-xl bg-slate-50 border border-slate-200 hover:border-amber-400 flex flex-col items-center justify-center gap-1.5 transition-colors">
+                <GmailLogoSvg className="w-7 h-7" />
+                <span className="text-[11px] font-bold uppercase text-slate-700">Gmail</span>
+              </button>
+              <button type="button" data-testid="social-login-facebook" onClick={() => handleAlternativeLogin('Facebook')} className="min-h-[70px] rounded-xl bg-slate-50 border border-slate-200 hover:border-amber-400 flex flex-col items-center justify-center gap-1.5 transition-colors">
+                <FacebookLogoSvg className="w-7 h-7" />
+                <span className="text-[11px] font-bold uppercase text-slate-700">Facebook</span>
+              </button>
+              <button type="button" data-testid="social-login-github" onClick={() => handleAlternativeLogin('GitHub')} className="min-h-[70px] rounded-xl bg-slate-50 border border-slate-200 hover:border-amber-400 flex flex-col items-center justify-center gap-1.5 transition-colors">
+                <GitHubLogoSvg className="w-7 h-7" />
+                <span className="text-[11px] font-bold uppercase text-slate-700">GitHub</span>
+              </button>
+              <button type="button" data-testid="social-login-ue" onClick={() => handleAlternativeLogin('UE')} className="min-h-[70px] rounded-xl bg-rose-50/70 border border-rose-200 hover:border-amber-400 flex flex-col items-center justify-center gap-1.5 transition-colors">
+                <UniversityOfTheEastLogoSvg className="w-8 h-8" />
+                <span className="text-[11px] font-bold uppercase text-slate-700">UE Account</span>
+              </button>
+            </div>
+          </div>
 
         </section>
 

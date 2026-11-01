@@ -195,6 +195,15 @@ export default function App() {
   );
 
   useEffect(() => {
+    const oauthToken = new URLSearchParams(window.location.search).get('auth_token');
+    const oauthError = new URLSearchParams(window.location.search).get('auth_error');
+    if (oauthToken) {
+      saveAccountToken(oauthToken);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (oauthError) {
+      showToast(decodeURIComponent(oauthError));
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
     getCurrentAccount()
       .then(({ account }) => {
         setStudentName(account.username);

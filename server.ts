@@ -195,6 +195,8 @@ async function startServer() {
       )
     `);
     await pool.query(`ALTER TABLE accounts ALTER COLUMN email DROP NOT NULL`);
+    await pool.query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS google_sub VARCHAR(255) UNIQUE`);
+    await pool.query(`ALTER TABLE accounts ALTER COLUMN password_hash DROP NOT NULL`);
   }
 
   if (pool) {
@@ -216,6 +218,99 @@ async function startServer() {
     const header = req.headers.authorization;
     return header?.startsWith('Bearer ') ? header.slice(7) : '';
   }
+
+  app.get('/api/auth/google', (req, res) => {
+    const clientId = process.env.GOOGLE_CLIENT_ID || '';
+    if (!clientId || !process.env.GOOGLE_CLIENT_SECRET) {
+      return res.redirect(`${process.env.FRONTEND_URL || process.env.APP_URL || req.protocol + '://' + req.get('host')}?auth_error=${encodeURIComponent('Google sign-in is not configured on the server.')}`);
+    }
+    const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${process.env.APP_URL || req.protocol + '://' + req.get('host')}/api/auth/google/callback`;
+    const state = jwt.sign({ googleOAuth: true }, jwtSecret, { expiresIn: '10m' });
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      scope: 'openid email profile',
+      access_type: 'online',
+      prompt: 'select_account',
+      state,
+    });
+    res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
+  });
+
+  app.get('/api/auth/google/callback', async (req, res) => {
+    const frontendUrl = process.env.FRONTEND_URL || process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+    const redirectToFrontend = (token?: string, error?: string) => {
+      const url = new URL(frontendUrl);
+      if (token) url.searchParams.set('auth_token', token);
+      if (error) url.searchParams.set('auth_error', error);
+      res.redirect(url.toString());
+    };
+    try {
+      const state = String(req.query.state || '');
+      jwt.verify(state, jwtSecret);
+      const code = String(req.query.code || '');
+      if (!code) throw new Error(String(req.query.error || 'Google sign-in was cancelled.'));
+      if (!pool) throw new Error('Account database is not configured.');
+
+      const clientId = process.env.GOOGLE_CLIENT_ID || '';
+      const clientSecret = process.env.GOOGLE_CLIENT_SECRET || '';
+      const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${process.env.APP_URL || `${req.protocol}://${req.get('host')}`}/api/auth/google/callback`;
+      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          code,
+          client_id: clientId,
+          client_secret: clientSecret,
+          redirect_uri: redirectUri,
+          grant_type: 'authorization_code',
+        }),
+      });
+      const tokenData = await tokenResponse.json() as { id_token?: string; error_description?: string };
+      if (!tokenResponse.ok || !tokenData.id_token) throw new Error(tokenData.error_description || 'Unable to exchange Google credentials.');
+
+      const profileResponse = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(tokenData.id_token)}`);
+      const profile = await profileResponse.json() as { sub?: string; email?: string; name?: string; aud?: string };
+      if (!profileResponse.ok || !profile.sub || profile.aud !== clientId) throw new Error('Google profile verification failed.');
+
+      await ensureAccountsTable();
+      let result = await pool.query(
+        `SELECT id, username, google_sub, password_hash, block_section FROM accounts WHERE google_sub = $1 OR LOWER(email) = LOWER($2) LIMIT 1`,
+        [profile.sub, String(profile.email || '')]
+      );
+
+      let account = result.rows[0];
+      if (account) {
+        await pool.query(`UPDATE accounts SET google_sub = COALESCE(google_sub, $1), updated_at = NOW() WHERE id = $2`, [profile.sub, account.id]);
+        account.block_section = account.block_section || 'BSCS-3A';
+      } else {
+        const base = String(profile.name || profile.email?.split('@')[0] || 'Scholar')
+          .replace(/[^A-Za-z0-9_-]/g, '')
+          .slice(0, 24) || 'Scholar';
+        let username = base;
+        for (let attempt = 0; attempt < 20; attempt += 1) {
+          try {
+            const inserted = await pool.query(
+              `INSERT INTO accounts (username, email, google_sub, block_section)
+               VALUES ($1, $2, $3, $4)
+               RETURNING id, username, block_section`,
+              [username, String(profile.email || '').slice(0, 254) || null, profile.sub, 'BSCS-3A']
+            );
+            account = inserted.rows[0];
+            break;
+          } catch (error: any) {
+            if (error?.code !== '23505') throw error;
+            username = `${base}${Math.floor(1000 + Math.random() * 9000)}`.slice(0, 32);
+          }
+        }
+      }
+      if (!account) throw new Error('Unable to create your Google account.');
+      redirectToFrontend(accountToken(account));
+    } catch (error: any) {
+      redirectToFrontend(undefined, error?.message || 'Google sign-in failed.');
+    }
+  });
 
   app.post('/api/auth/register', async (req, res) => {
     if (!pool) return res.status(503).json({ error: 'Account database is not configured.' });

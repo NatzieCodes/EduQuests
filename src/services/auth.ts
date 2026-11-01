@@ -29,6 +29,10 @@ export function getAccountToken() {
   return localStorage.getItem(TOKEN_KEY);
 }
 
+export function startGoogleLogin() {
+  window.location.assign(`${API_URL}/api/auth/google`);
+}
+
 export function clearAccountToken() {
   localStorage.removeItem(TOKEN_KEY);
 }
