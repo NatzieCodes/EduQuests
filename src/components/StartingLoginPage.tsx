@@ -235,6 +235,10 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
       setStatusBanner('Enter your username.');
       return;
     }
+    if (!password) {
+      setStatusBanner('Enter your password.');
+      return;
+    }
     if (isRegisterMode) {
       if (password.length < 8) {
         setStatusBanner('Password must be at least 8 characters.');
@@ -263,6 +267,10 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
       setStatusBanner('Enter your username.');
       return;
     }
+    if (!password) {
+      setStatusBanner('Enter your password.');
+      return;
+    }
     if (password.length < 8) {
       setStatusBanner('Password must be at least 8 characters.');
       return;
@@ -276,7 +284,11 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
 
   const handleAlternativeLogin = (provider: 'Gmail' | 'Facebook' | 'GitHub' | 'UE') => {
     if (provider === 'Gmail') {
-      startGoogleLogin();
+      try {
+        startGoogleLogin();
+      } catch (error) {
+        setStatusBanner(error instanceof Error ? error.message : 'Google sign-in is unavailable.');
+      }
       return;
     }
     setStatusBanner(`${provider} sign-in is not configured yet.`);
