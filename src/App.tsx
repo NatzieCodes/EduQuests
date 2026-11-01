@@ -961,6 +961,7 @@ export default function App() {
         combatEvent={combatEvent}
         classmates={isJoinedInRoom ? classmates : []}
         localPlayerId={localPlayerId}
+        isJoinedInRoom={isJoinedInRoom}
       />
 
       {/* Starting / Login Page with Circular Game Preview (shown before entering the actual Lobby) */}

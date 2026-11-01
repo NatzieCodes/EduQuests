@@ -19,6 +19,7 @@ interface ThreeStageProps {
   combatEvent: CombatVisualEvent | null;
   classmates?: ClassmateMember[];
   localPlayerId?: string;
+  isJoinedInRoom?: boolean;
 }
 
 // Pre-allocated scratch helpers outside the render loop (Zero GC)
@@ -40,6 +41,7 @@ export const ThreeStage: React.FC<ThreeStageProps> = ({
   combatEvent,
   classmates = [],
   localPlayerId = 'local-player',
+  isJoinedInRoom = false,
 }) => {
   const mountRef = useRef<HTMLDivElement | null>(null);
 
@@ -51,6 +53,7 @@ export const ThreeStage: React.FC<ThreeStageProps> = ({
     onSelectHero,
     classmates,
     localPlayerId,
+    isJoinedInRoom,
   });
 
   useEffect(() => {
@@ -61,8 +64,9 @@ export const ThreeStage: React.FC<ThreeStageProps> = ({
       onSelectHero,
       classmates,
       localPlayerId,
+      isJoinedInRoom,
     };
-  }, [shellState, mode, selectedHero, onSelectHero, classmates, localPlayerId]);
+  }, [shellState, mode, selectedHero, onSelectHero, classmates, localPlayerId, isJoinedInRoom]);
 
   const combatEventRef = useRef<CombatVisualEvent | null>(null);
   useEffect(() => {
@@ -157,78 +161,57 @@ export const ThreeStage: React.FC<ThreeStageProps> = ({
     const lobbyRoomGroup = new THREE.Group();
     lobbyGroup.add(lobbyRoomGroup);
 
-    const lobbyTableGroup = new THREE.Group();
-    lobbyTableGroup.position.set(0, 0, 0.05);
-    lobbyGroup.add(lobbyTableGroup);
+    const lobbySofaGroup = new THREE.Group();
+    lobbySofaGroup.position.set(0, 0, -0.75);
+    lobbyGroup.add(lobbySofaGroup);
+    lobbySofaGroup.visible = false;
 
-    const tableMaterial = new THREE.MeshStandardMaterial({
-      color: 0x4b2d20,
-      roughness: 0.58,
-      metalness: 0.12,
+    const sofaWoodMaterial = new THREE.MeshStandardMaterial({
+      color: 0x3f241b,
+      roughness: 0.68,
+      metalness: 0.08,
     });
-    const chairMaterial = new THREE.MeshStandardMaterial({
-      color: 0x2b1d18,
-      roughness: 0.72,
-      metalness: 0.05,
+    const sofaFabricMaterial = new THREE.MeshStandardMaterial({
+      color: 0x671d1d,
+      roughness: 0.82,
+      metalness: 0.02,
     });
-
-    const tableTop = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.16, 1.25), tableMaterial);
-    tableTop.position.y = 1.05;
-    tableTop.castShadow = true;
-    lobbyTableGroup.add(tableTop);
-
-    [-1.55, 1.55].forEach((x) => {
-      [-0.42, 0.42].forEach((z) => {
-        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.05, 0.12), tableMaterial);
-        leg.position.set(x, 0.52, z);
-        leg.castShadow = true;
-        lobbyTableGroup.add(leg);
-      });
+    const sofaTrimMaterial = new THREE.MeshStandardMaterial({
+      color: 0x8b3a30,
+      roughness: 0.7,
+      metalness: 0.04,
     });
 
-    const addChair = (x: number, z: number, rotationY: number) => {
-      const chair = new THREE.Group();
-      chair.position.set(x, 0, z);
-      chair.rotation.y = rotationY;
+    const sofaSeat = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.72, 1.25), sofaFabricMaterial);
+    sofaSeat.position.set(0, 0.58, 0.05);
+    sofaSeat.castShadow = true;
+    sofaSeat.receiveShadow = true;
+    lobbySofaGroup.add(sofaSeat);
 
-      const seat = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.14, 0.72), chairMaterial);
-      seat.position.y = 0.62;
-      seat.castShadow = true;
-      chair.add(seat);
+    const sofaBack = new THREE.Mesh(new THREE.BoxGeometry(5.2, 1.38, 0.32), sofaFabricMaterial);
+    sofaBack.position.set(0, 1.42, -0.58);
+    sofaBack.castShadow = true;
+    lobbySofaGroup.add(sofaBack);
 
-      const back = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.78, 0.12), chairMaterial);
-      back.position.set(0, 1.03, 0.34);
-      back.castShadow = true;
-      chair.add(back);
+    [-2.55, 2.55].forEach((x) => {
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(0.34, 1.06, 1.35), sofaTrimMaterial);
+      arm.position.set(x, 0.86, 0.02);
+      arm.castShadow = true;
+      lobbySofaGroup.add(arm);
+    });
 
-      [-0.26, 0.26].forEach((legX) => {
-        [-0.26, 0.26].forEach((legZ) => {
-          const leg = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.62, 0.09), chairMaterial);
-          leg.position.set(legX, 0.31, legZ);
-          leg.castShadow = true;
-          chair.add(leg);
-        });
-      });
+    [-1.72, -0.86, 0, 0.86, 1.72].forEach((x) => {
+      const cushion = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.16, 1.16), sofaTrimMaterial);
+      cushion.position.set(x, 0.98, 0.08);
+      cushion.rotation.x = -0.04;
+      lobbySofaGroup.add(cushion);
+    });
 
-      lobbyTableGroup.add(chair);
-    };
-
-    // The player sits at the back edge of the table; two guest chairs complete the table.
-    addChair(-1.05, -0.72, Math.PI);
-    addChair(0, -0.72, Math.PI);
-    addChair(1.05, -0.72, Math.PI);
-
-    const seatedCharacter = new THREE.Group();
-    seatedCharacter.position.set(0, 0.28, -0.72);
-    seatedCharacter.rotation.y = 0;
-    seatedCharacter.scale.setScalar(0.56);
-    lobbyTableGroup.add(seatedCharacter);
-
-    const seatedTorso = studyRoom.studentTorso.clone(true);
-    const seatedHead = studyRoom.studentHead.clone(true);
-    seatedTorso.position.set(0, 0.72, 0);
-    seatedHead.position.set(0, 2.24, 0.06);
-    seatedCharacter.add(seatedTorso, seatedHead);
+    [-2.38, 2.38].forEach((x) => {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.42, 0.18), sofaWoodMaterial);
+      leg.position.set(x, 0.21, 0.42);
+      lobbySofaGroup.add(leg);
+    });
 
     const lobbyLoader = new FBXLoader();
     lobbyLoader.setResourcePath(`${import.meta.env.BASE_URL}assets/gryffindor-room/textures/`);
@@ -265,12 +248,14 @@ export const ThreeStage: React.FC<ThreeStageProps> = ({
     const lobbySquadGroup = new THREE.Group();
     lobbyGroup.add(lobbySquadGroup);
 
-    const SQUAD_SLOTS: { x: number; y: number; z: number; rotY: number; scale: number }[] = [
-      { x: -1.25, y: 0.22, z: -0.05, rotY: 0.22, scale: 0.72 },
-      { x: 1.25, y: 0.22, z: -0.05, rotY: -0.22, scale: 0.72 },
-      { x: -1.95, y: 0.22, z: -0.28, rotY: 0.32, scale: 0.68 },
-      { x: 1.95, y: 0.22, z: -0.28, rotY: -0.32, scale: 0.68 },
-      { x: -0.68, y: 0.22, z: -0.34, rotY: 0.14, scale: 0.68 },
+    const SOFA_PEER_SLOTS: { x: number; y: number; z: number; scale: number }[] = [
+      { x: -0.86, y: 0.42, z: -0.58, scale: 0.48 },
+      { x: 0.86, y: 0.42, z: -0.58, scale: 0.48 },
+      { x: 1.72, y: 0.42, z: -0.58, scale: 0.48 },
+    ];
+    const STANDING_PEER_SLOTS: { x: number; y: number; z: number; scale: number }[] = [
+      { x: -2.25, y: 0.05, z: 0.65, scale: 0.64 },
+      { x: 2.25, y: 0.05, z: 0.65, scale: 0.64 },
     ];
 
     const squadRingMat = new THREE.MeshBasicMaterial({
@@ -288,36 +273,41 @@ export const ThreeStage: React.FC<ThreeStageProps> = ({
 
     let lastSquadSignature = '__init__';
     const squadModels: THREE.Group[] = [];
+    const lobbyLocalGroup = new THREE.Group();
+    lobbySofaGroup.add(lobbyLocalGroup);
 
-    function syncLobbySquad(members: ClassmateMember[], curLocalId: string) {
+    function syncLobbySquad(members: ClassmateMember[], curLocalId: string, localHeroId: HeroId, joined: boolean) {
+      lobbySofaGroup.visible = joined;
       // Filter peers besides the local player, capped at 5 peers (total 6 in room)
       const peers = members.filter((m) => m.id !== curLocalId && m.id !== 'local-player').slice(0, 5);
-      const sig = peers.map((p) => `${p.id}:${p.heroId}`).join('|');
+      const sig = `${joined}:${localHeroId}|${peers.map((p) => `${p.id}:${p.heroId}`).join('|')}`;
       if (sig === lastSquadSignature) return;
       lastSquadSignature = sig;
 
       lobbySquadGroup.clear();
       squadModels.length = 0;
+      lobbyLocalGroup.clear();
+
+      if (joined) {
+        const localCharacter = buildHeroModel(localHeroId);
+        localCharacter.scale.setScalar(0.52);
+        localCharacter.position.set(-1.72, 0.44, -0.58);
+        localCharacter.rotation.y = 0;
+        lobbyLocalGroup.add(localCharacter);
+        squadModels.push(localCharacter);
+      }
 
       peers.forEach((peer, idx) => {
-        const slot = SQUAD_SLOTS[idx];
-        if (!slot) return;
-
         const slotHolder = new THREE.Group();
+        const seated = idx < SOFA_PEER_SLOTS.length;
+        const slot = seated ? SOFA_PEER_SLOTS[idx] : STANDING_PEER_SLOTS[idx - SOFA_PEER_SLOTS.length];
+        if (!slot) return;
         slotHolder.position.set(slot.x, slot.y, slot.z);
-        slotHolder.rotation.y = slot.rotY;
-
-        // Glowing cyan floor pad ring (matching reference image, NO plus sign)
-        const floorRing = new THREE.Mesh(new THREE.RingGeometry(0.32, 0.38, 32), squadRingMat);
-        floorRing.rotation.x = -Math.PI / 2;
-        floorRing.position.y = 0.02;
-        const floorDisc = new THREE.Mesh(new THREE.CircleGeometry(0.32, 28), squadDiscMat);
-        floorDisc.rotation.x = -Math.PI / 2;
-        floorDisc.position.y = 0.015;
-        slotHolder.add(floorRing, floorDisc);
+        slotHolder.rotation.y = 0;
 
         const peerHero = buildHeroModel(peer.heroId);
         peerHero.scale.setScalar(slot.scale);
+        peerHero.rotation.y = 0;
         slotHolder.add(peerHero);
 
         lobbySquadGroup.add(slotHolder);
@@ -642,6 +632,7 @@ export const ThreeStage: React.FC<ThreeStageProps> = ({
         selectedHero: curHero,
         classmates: curClassmates,
         localPlayerId: curLocalId,
+        isJoinedInRoom: curJoinedInRoom,
       } = stateRef.current;
 
       if (curShell === 'title') {
@@ -656,11 +647,16 @@ export const ThreeStage: React.FC<ThreeStageProps> = ({
         hemiLight.groundColor.setHex(0x451a03);
         keyLight.intensity = 1.9;
 
-        syncLobbySquad(curClassmates, curLocalId);
+        syncLobbySquad(curClassmates, curLocalId, curHero, curJoinedInRoom);
 
         elapsed += dt;
-        _camTargetPos.set(0, 1.52, 4.15);
-        _camLookTarget.set(0, 1.48, 0);
+        if (curJoinedInRoom) {
+          _camTargetPos.set(0, 3.15, 8.6);
+          _camLookTarget.set(0, 1.25, -0.45);
+        } else {
+          _camTargetPos.set(0, 1.52, 4.15);
+          _camLookTarget.set(0, 1.48, 0);
+        }
         camera.position.lerp(_camTargetPos, 1 - Math.exp(-6 * dt));
         _currentLook.lerp(_camLookTarget, 1 - Math.exp(-6 * dt));
         camera.lookAt(_currentLook);
