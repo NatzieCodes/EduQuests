@@ -618,7 +618,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                 onClick={() => setChallengeMode(mode)}
                 className={`rounded-xl border px-3 py-3 text-left transition-all cursor-pointer ${
                   challengeMode === mode
-                    ? 'border-yellow-300 bg-yellow-400 text-slate-950 shadow-[0_4px_0_#92400e]'
+                    ? 'border-cyan-200 bg-cyan-400 text-slate-950 shadow-[0_4px_0_#075985]'
                     : 'border-white/15 bg-white/10 text-white hover:border-yellow-400/70 hover:bg-white/15'
                 }`}
               >
