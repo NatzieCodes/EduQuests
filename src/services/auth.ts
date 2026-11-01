@@ -1,7 +1,6 @@
 export interface EduQuestsAccount {
   id: string;
   username: string;
-  email: string;
   blockSection?: string;
   block_section?: string;
 }
@@ -34,7 +33,7 @@ export function clearAccountToken() {
   localStorage.removeItem(TOKEN_KEY);
 }
 
-export function registerAccount(input: { username: string; email: string; password: string; blockSection: string }) {
+export function registerAccount(input: { username: string; password: string; blockSection: string }) {
   return request<{ account: EduQuestsAccount; token: string }>('/api/auth/register', {
     method: 'POST',
     body: JSON.stringify(input),

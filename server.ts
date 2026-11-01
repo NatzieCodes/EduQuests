@@ -187,13 +187,14 @@ async function startServer() {
       CREATE TABLE IF NOT EXISTS accounts (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         username VARCHAR(32) UNIQUE NOT NULL,
-        email VARCHAR(254) UNIQUE NOT NULL,
+        email VARCHAR(254) UNIQUE,
         password_hash TEXT NOT NULL,
         block_section VARCHAR(64) NOT NULL DEFAULT 'BSCS-3A',
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
+    await pool.query(`ALTER TABLE accounts ALTER COLUMN email DROP NOT NULL`);
   }
 
   if (pool) {
@@ -202,7 +203,7 @@ async function startServer() {
 
   const jwtSecret = process.env.JWT_SECRET || '';
 
-  function accountToken(account: { id: string; username: string; email: string; block_section: string }) {
+  function accountToken(account: { id: string; username: string; block_section: string }) {
     if (!jwtSecret || jwtSecret.length < 32) throw new Error('JWT_SECRET must contain at least 32 characters');
     return jwt.sign(
       { sub: account.id, username: account.username, blockSection: account.block_section },
@@ -220,24 +221,24 @@ async function startServer() {
     if (!pool) return res.status(503).json({ error: 'Account database is not configured.' });
     try {
       const username = String(req.body?.username || '').trim().replace(/^@/, '').slice(0, 32);
-      const email = String(req.body?.email || '').trim().toLowerCase().slice(0, 254);
       const password = String(req.body?.password || '');
+      const confirmPassword = String(req.body?.confirmPassword || password);
       const blockSection = String(req.body?.blockSection || 'BSCS-3A').trim().slice(0, 64);
       if (!/^[A-Za-z0-9_-]{3,32}$/.test(username)) return res.status(400).json({ error: 'Username must be 3-32 letters, numbers, underscores, or hyphens.' });
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Enter a valid email address.' });
       if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+      if (password !== confirmPassword) return res.status(400).json({ error: 'Passwords do not match.' });
       await ensureAccountsTable();
       const passwordHash = await bcrypt.hash(password, 12);
       const result = await pool.query(
-        `INSERT INTO accounts (username, email, password_hash, block_section)
-         VALUES ($1, $2, $3, $4)
-         RETURNING id, username, email, block_section`,
-        [username, email, passwordHash, blockSection]
+        `INSERT INTO accounts (username, password_hash, block_section)
+         VALUES ($1, $2, $3)
+         RETURNING id, username, block_section`,
+        [username, passwordHash, blockSection]
       );
       const account = result.rows[0];
       res.status(201).json({ account, token: accountToken(account) });
     } catch (error: any) {
-      if (error?.code === '23505') return res.status(409).json({ error: 'That username or email is already registered.' });
+      if (error?.code === '23505') return res.status(409).json({ error: 'That username is already registered.' });
       console.error('Registration failed:', error);
       res.status(500).json({ error: 'Unable to create account.' });
     }
@@ -261,7 +262,6 @@ async function startServer() {
         account: {
           id: account.id,
           username: account.username,
-          email: account.email,
           blockSection: account.block_section,
         },
         token: accountToken(account),

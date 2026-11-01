@@ -682,9 +682,11 @@ export default function App() {
     }
   };
 
-  const handleRegisterStudent = async (name: string, block: string, password = '', email = '') => {
+  const handleRegisterStudent = async (name: string, block: string, password = '', _confirmPassword = '') => {
     try {
-      const result = await registerAccount({ username: name, email, password, blockSection: block });
+      if (password.length < 8) throw new Error('Password must be at least 8 characters.');
+      if (_confirmPassword && password !== _confirmPassword) throw new Error('Passwords do not match.');
+      const result = await registerAccount({ username: name, password, blockSection: block });
       saveAccountToken(result.token);
       setStudentName(result.account.username);
       setBlockSection(result.account.blockSection || result.account.block_section || block);

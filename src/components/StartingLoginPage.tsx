@@ -164,7 +164,7 @@ interface StartingLoginPageProps {
   defaultUsername: string;
   defaultBlockSection: string;
   onLoginEnter: (username: string, blockSection: string, password: string) => void | Promise<void>;
-  onRegisterEnter: (username: string, blockSection: string, password: string, email: string) => void | Promise<void>;
+  onRegisterEnter: (username: string, blockSection: string, password: string, confirmPassword?: string) => void | Promise<void>;
 }
 
 export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
@@ -175,7 +175,7 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
 }) => {
   const [username, setUsername] = useState<string>(defaultUsername || 'Honchkrow93');
   const [password, setPassword] = useState<string>('');
-  const [email, setEmail] = useState<string>('');
+  const [confirmPassword, setConfirmPassword] = useState<string>('');
   const [isRegisterMode, setIsRegisterMode] = useState<boolean>(false);
   const [statusBanner, setStatusBanner] = useState<string | null>(null);
 
@@ -233,7 +233,15 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
     e.preventDefault();
     const cleanUser = username.trim().replace(/^@/, '') || defaultUsername || 'Honchkrow93';
     if (isRegisterMode) {
-      void onRegisterEnter(cleanUser, resolvedBlockSection, password, email);
+      if (password.length < 8) {
+        setStatusBanner('Password must be at least 8 characters.');
+        return;
+      }
+      if (password !== confirmPassword) {
+        setStatusBanner('Passwords do not match.');
+        return;
+      }
+      void onRegisterEnter(cleanUser, resolvedBlockSection, password, confirmPassword);
     } else {
       void onLoginEnter(cleanUser, resolvedBlockSection, password);
     }
@@ -248,16 +256,15 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
       return;
     }
     const cleanUser = username.trim().replace(/^@/, '') || defaultUsername || 'Honchkrow93';
-    void onRegisterEnter(cleanUser, resolvedBlockSection, password, email);
-  };
-
-  const handleQuickSocialLogin = (providerLabel: string, presetHandle: string) => {
-    void presetHandle;
-    setStatusBanner(`${providerLabel} sign-in is not configured yet. Use your EduQuests username and password.`);
-  };
-
-  const handleForgotPassword = () => {
-    setStatusBanner('Password recovery requires the public email service to be configured.');
+    if (password.length < 8) {
+      setStatusBanner('Password must be at least 8 characters.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setStatusBanner('Passwords do not match.');
+      return;
+    }
+    void onRegisterEnter(cleanUser, resolvedBlockSection, password, confirmPassword);
   };
 
   const handlePressPreviewCard = (index: number) => {
@@ -347,23 +354,6 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
               />
             </div>
 
-            {isRegisterMode && (
-              <div>
-                <label htmlFor="starting-email-input" className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
-                  Student Email
-                </label>
-                <input
-                  id="starting-email-input"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className="w-full h-12 px-4 bg-white text-slate-900 font-medium text-[15px] rounded-xl border border-slate-300/90 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-400/30 transition-all"
-                />
-              </div>
-            )}
-
             {/* PASSWORD FIELD */}
             <div>
               <div className="flex items-center justify-between mb-2">
@@ -373,15 +363,6 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
                 >
                   Password
                 </label>
-                <button
-                  type="button"
-                  data-testid="forgot-password-btn"
-                  onClick={handleForgotPassword}
-                  className="text-xs font-semibold text-amber-700 hover:text-amber-600 underline-offset-2 hover:underline transition-colors cursor-pointer flex items-center gap-1 whitespace-nowrap"
-                >
-                  <KeyRound className="w-3.5 h-3.5 shrink-0" />
-                  <span>Forgot Password?</span>
-                </button>
               </div>
               <input
                 id="starting-password-input"
@@ -393,6 +374,28 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
                 className="w-full h-12 px-4 bg-white text-slate-900 font-medium text-[15px] rounded-xl border border-slate-300/90 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-400/30 transition-all"
               />
             </div>
+
+            {isRegisterMode && (
+              <div>
+                <label
+                  htmlFor="starting-confirm-password-input"
+                  className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2"
+                >
+                  Re-enter Password
+                </label>
+                <input
+                  id="starting-confirm-password-input"
+                  data-testid="starting-confirm-password-input"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Re-enter your password"
+                  required
+                  minLength={8}
+                  className="w-full h-12 px-4 bg-white text-slate-900 font-medium text-[15px] rounded-xl border border-slate-300/90 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-400/30 transition-all"
+                />
+              </div>
+            )}
 
             {/* Status or Forgot Password feedback banner */}
             {statusBanner && (
@@ -429,78 +432,6 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
             </div>
           </form>
 
-          {/* Alternative & Institutional SSO Row */}
-          <div>
-            <div className="relative flex items-center justify-center mb-4">
-              <div className="w-full border-t border-slate-200" />
-              <span className="px-3 bg-white text-[11px] font-semibold uppercase tracking-wider text-slate-400 whitespace-nowrap">
-                Or continue with
-              </span>
-              <div className="w-full border-t border-slate-200" />
-            </div>
-
-            <div className="grid grid-cols-4 gap-4">
-              {/* GMAIL */}
-              <button
-                type="button"
-                data-testid="social-login-gmail"
-                onClick={() => handleQuickSocialLogin('Gmail', 'Scholar_Gmail')}
-                className="group min-h-[70px] py-2.5 px-2 rounded-xl bg-slate-50 hover:bg-amber-50/80 border border-slate-200/90 hover:border-amber-400 flex flex-col items-center justify-center gap-1.5 transition-all hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
-              >
-                <div className="w-10 h-10 rounded-xl bg-white border border-slate-200/80 group-hover:border-amber-300 flex items-center justify-center transition-colors">
-                  <GmailLogoSvg className="w-6 h-6" />
-                </div>
-                <span className="text-[11px] font-display font-bold uppercase tracking-wide text-slate-700 group-hover:text-slate-950 whitespace-nowrap">
-                  Gmail
-                </span>
-              </button>
-
-              {/* FACEBOOK */}
-              <button
-                type="button"
-                data-testid="social-login-facebook"
-                onClick={() => handleQuickSocialLogin('Facebook', 'Scholar_FB')}
-                className="group min-h-[70px] py-2.5 px-2 rounded-xl bg-slate-50 hover:bg-amber-50/80 border border-slate-200/90 hover:border-amber-400 flex flex-col items-center justify-center gap-1.5 transition-all hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
-              >
-                <div className="w-10 h-10 rounded-xl bg-white border border-slate-200/80 group-hover:border-amber-300 flex items-center justify-center transition-colors">
-                  <FacebookLogoSvg className="w-6 h-6" />
-                </div>
-                <span className="text-[11px] font-display font-bold uppercase tracking-wide text-slate-700 group-hover:text-slate-950 whitespace-nowrap">
-                  Facebook
-                </span>
-              </button>
-
-              {/* GITHUB */}
-              <button
-                type="button"
-                data-testid="social-login-github-1"
-                onClick={() => handleQuickSocialLogin('GitHub', 'Scholar_Git')}
-                className="group min-h-[70px] py-2.5 px-2 rounded-xl bg-slate-50 hover:bg-amber-50/80 border border-slate-200/90 hover:border-amber-400 flex flex-col items-center justify-center gap-1.5 transition-all hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
-              >
-                <div className="w-10 h-10 rounded-xl bg-white border border-slate-200/80 group-hover:border-amber-300 flex items-center justify-center transition-colors">
-                  <GitHubLogoSvg className="w-6 h-6" />
-                </div>
-                <span className="text-[11px] font-display font-bold uppercase tracking-wide text-slate-700 group-hover:text-slate-950 whitespace-nowrap">
-                  GitHub
-                </span>
-              </button>
-
-              {/* UNIVERSITY OF THE EAST (UE ACCOUNT) */}
-              <button
-                type="button"
-                data-testid="social-login-ue"
-                onClick={() => handleQuickSocialLogin('University of the East (UE)', 'UE_Warrior')}
-                className="group min-h-[70px] py-2.5 px-2 rounded-xl bg-rose-50/70 hover:bg-amber-50/90 border border-rose-200/90 hover:border-amber-400 flex flex-col items-center justify-center gap-1.5 transition-all hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
-              >
-                <div className="w-10 h-10 rounded-xl bg-white border border-rose-200 group-hover:border-amber-300 flex items-center justify-center transition-colors">
-                  <UniversityOfTheEastLogoSvg className="w-7 h-7" />
-                </div>
-                <span className="text-[11px] font-display font-bold uppercase tracking-wide text-rose-950 group-hover:text-slate-950 whitespace-nowrap">
-                  UE Account
-                </span>
-              </button>
-            </div>
-          </div>
         </section>
 
         {/* ===================================================================
