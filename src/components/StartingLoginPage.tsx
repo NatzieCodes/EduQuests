@@ -304,7 +304,7 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
         <section
           data-testid="starting-login-card"
           aria-label="Scholar Login and Registration"
-          className="relative z-20 justify-self-start w-full max-w-[460px] lg:w-[460px] xl:w-[475px] rounded-[28px] bg-white/95 text-slate-900 border border-slate-200/90 shadow-[0_24px_64px_rgba(15,23,42,0.5)] p-6 sm:p-8 flex flex-col gap-4 shrink-0 lg:-translate-x-8 xl:-translate-x-12"
+          className="relative z-20 justify-self-start w-full max-w-[460px] lg:w-[460px] xl:w-[475px] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[28px] bg-white/95 text-slate-900 border border-slate-200/90 shadow-[0_24px_64px_rgba(15,23,42,0.5)] p-5 sm:p-6 flex flex-col gap-3 shrink-0 lg:-translate-x-8 xl:-translate-x-12"
         >
           {/* Brand Logo Lockup */}
           <div className="flex flex-col items-center text-center pb-4 border-b border-slate-200/80">
@@ -440,7 +440,7 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
             </div>
           </form>
 
-          <div className="mt-4">
+          <div className="mt-1">
             <div className="relative flex items-center justify-center mb-4">
               <div className="w-full border-t border-slate-200" />
               <span className="px-3 bg-white text-[11px] font-semibold uppercase tracking-wider text-slate-400 whitespace-nowrap">
