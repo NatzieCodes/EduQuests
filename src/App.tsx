@@ -29,6 +29,7 @@ import {
 import { StatusModal } from './components/StatusModal';
 import { CharacterCustomizerModal } from './components/CharacterCustomizerModal';
 import { StartingLoginPage } from './components/StartingLoginPage';
+import { BattleSetupModal } from './components/BattleSetupModal';
 import { soundFX } from './game/sound';
 
 function getOrCreateSessionPlayerId(): string {
@@ -77,6 +78,7 @@ export default function App() {
 
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [roomModalOpen, setRoomModalOpen] = useState(false);
+  const [battleSetupOpen, setBattleSetupOpen] = useState(false);
   const [muted, setMuted] = useState(false);
 
   // Character Customization State (Sex, Outfit, Accent Glow)
@@ -938,6 +940,10 @@ export default function App() {
             setStartBattleAfterNotes(Boolean(startAfter));
             setAiModalOpen(true);
           }}
+          onOpenBattleSetup={(mode) => {
+            if (mode) setSelectedMode(mode);
+            setBattleSetupOpen(true);
+          }}
           onOpenRoomModal={() => {
             setRoomJoinError(null);
             setRoomModalOpen(true);
@@ -1012,6 +1018,38 @@ export default function App() {
           liveToast={liveToast}
         />
       )}
+
+      <BattleSetupModal
+        isOpen={battleSetupOpen}
+        selectedMode={selectedMode}
+        roomCode={roomCode}
+        isHost={
+          classmates.find((member) => member.id === localPlayerId)?.isHost ??
+          !isJoinedInRoom
+        }
+        localPlayerId={localPlayerId}
+        classmates={classmates}
+        decks={decks}
+        activeDeck={activeDeck}
+        onSelectDeck={(deck) => {
+          setActiveDeck(deck);
+          setHasCustomNotes(true);
+          showToast(`Selected ${deck.title} for the battle`);
+        }}
+        onStartBattle={(durationSec, questionCount) => {
+          const cappedCount = Math.min(questionCount, activeDeck.questions.length);
+          setActiveDeck((current) => ({
+            ...current,
+            questions: current.questions.slice(0, cappedCount),
+          }));
+          setBattleDurationSec(durationSec);
+          setHasCustomNotes(true);
+          setHasRoomOrInvite(true);
+          setBattleSetupOpen(false);
+          launchActualBattle(selectedMode, undefined, durationSec);
+        }}
+        onClose={() => setBattleSetupOpen(false)}
+      />
 
       {/* Inventory & PDF/Notes Storage Modal */}
       <InventoryModal

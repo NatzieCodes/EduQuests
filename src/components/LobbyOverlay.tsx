@@ -91,6 +91,7 @@ interface LobbyOverlayProps {
   activeDeck: QuizDeck;
   hasCustomNotes: boolean;
   onOpenInventoryModal: (startBattleAfter?: boolean) => void;
+  onOpenBattleSetup: (mode?: GameMode) => void;
   onOpenRoomModal: () => void;
   onStartBattle: (durationSec: number) => void;
   roomCode: string;
@@ -192,6 +193,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
   activeDeck,
   hasCustomNotes,
   onOpenInventoryModal,
+  onOpenBattleSetup,
   onOpenRoomModal,
   onStartBattle,
   roomCode,
@@ -575,6 +577,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
       onSelectMode(challenge);
       setChallengeMode(challenge);
       setReceivedBattleChallenge(challenge);
+      onOpenBattleSetup(challenge);
     }
     setBattleModeDrawerOpen(false);
   };
@@ -1241,7 +1244,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                 data-start="true"
                 onClick={(e) => {
                   e.currentTarget.blur();
-                  onOpenInventoryModal(true);
+                  onOpenBattleSetup(selectedMode);
                 }}
                 className="w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500 hover:from-yellow-200 hover:to-amber-400 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99] text-slate-950 font-display font-black text-base tracking-wide flex items-center justify-center gap-2 shadow-[0_8px_24px_rgba(245,158,11,0.45)] hover:shadow-[0_12px_28px_rgba(245,158,11,0.6)] transition-all whitespace-nowrap cursor-pointer"
               >
