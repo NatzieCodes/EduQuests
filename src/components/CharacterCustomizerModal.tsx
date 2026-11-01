@@ -57,15 +57,15 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
       aria-labelledby="customizer-title"
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-sm"
     >
-      <div className="relative w-full max-w-xl rounded-3xl bg-white/95 text-slate-900 border border-slate-200/90 shadow-[0_20px_60px_rgba(0,0,0,0.25)] backdrop-blur-md overflow-hidden flex flex-col max-h-[88vh]">
+      <div className="relative w-full max-w-xl rounded-3xl bg-white/95 text-slate-900 shadow-[0_20px_60px_rgba(0,0,0,0.25)] backdrop-blur-md overflow-hidden flex flex-col max-h-[88vh]">
         {/* Header */}
-        <div className="px-6 pt-5 pb-3.5 border-b border-slate-200 flex items-center justify-between shrink-0">
+        <div className="px-6 pt-5 pb-3.5 bg-blue-700 text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-yellow-300 via-amber-400 to-yellow-500 text-slate-950 flex items-center justify-center shadow-sm">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
-              <h2 id="customizer-title" className="text-base sm:text-lg font-display font-black tracking-wide text-slate-900">
+              <h2 id="customizer-title" className="text-base sm:text-lg font-display font-black tracking-wide text-white">
                 CHARACTER CUSTOMIZER
               </h2>
               <p className="text-[11px] text-slate-600">

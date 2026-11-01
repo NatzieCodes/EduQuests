@@ -208,8 +208,8 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
       aria-modal="true"
       aria-labelledby="inventory-modal-title"
     >
-      <div className="w-full max-w-6xl h-[82vh] max-h-[760px] rounded-3xl bg-white text-slate-900 border border-slate-200 shadow-[0_24px_70px_rgba(0,0,0,0.35)] overflow-hidden flex flex-col">
-        <div className="px-6 py-4 bg-slate-900 text-white border-b border-slate-800 flex items-center justify-between gap-3 shrink-0">
+      <div className="w-full max-w-6xl h-[82vh] max-h-[760px] rounded-3xl bg-white text-slate-900 shadow-[0_24px_70px_rgba(0,0,0,0.35)] overflow-hidden flex flex-col">
+        <div className="px-6 py-4 bg-blue-700 text-white flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-yellow-300 via-amber-400 to-yellow-500 text-slate-950 flex items-center justify-center shrink-0">
               <FolderOpen className="w-5 h-5" />
