@@ -65,116 +65,83 @@
 
 /* Wizard academy palette from the supplied art direction */
 :root {
-  --wizard-bg-deepest: #07111f;
-  --wizard-bg: #0a1b31;
-  --wizard-panel: rgba(13, 35, 65, 0.92);
-  --wizard-panel-soft: rgba(22, 52, 82, 0.78);
-  --wizard-button: #164e8a;
-  --wizard-button-hover: #1d6fa8;
-  --wizard-button-pressed: #0d385f;
-  --wizard-button-text: #effaff;
-  --wizard-primary-text: #f4fbff;
-  --wizard-secondary-text: #b8cce0;
-  --wizard-muted-text: #809bb4;
-  --wizard-cyan: #39c5f5;
-  --wizard-highlight: #63d7ff;
-  --wizard-border: rgba(96, 205, 255, 0.38);
+  --wizard-bg: #1A1613;
+  --wizard-button: #2C2219;
+  --wizard-pressed: #453324;
+  --wizard-button-text: #EBE5D8;
+  --wizard-text: #C7BEAF;
+  --wizard-highlight: #E6B325;
 }
 
-/* Deepest backgrounds */
+/* Shared surfaces */
 .bg-slate-950,
-.bg-slate-950\/95,
-.bg-slate-950\/90,
 .bg-slate-950\/85,
-.bg-slate-950\/80 {
-  background-color: var(--wizard-bg-deepest) !important;
-}
-
+.bg-slate-950\/90,
+.bg-slate-950\/80,
 .bg-slate-900,
-.bg-slate-900\/95,
 .bg-slate-900\/90,
-.bg-slate-900\/80,
-.bg-slate-800 {
+.bg-slate-900\/95 {
   background-color: var(--wizard-bg) !important;
 }
 
-/* Secondary translucent panels */
-.bg-slate-100,
-.bg-slate-50,
-.bg-white\/10 {
-  background-color: var(--wizard-panel-soft) !important;
-}
-
-.bg-white\/15,
-.bg-white\/20,
-.bg-white\/92,
-.bg-white\/95 {
-  background-color: var(--wizard-panel) !important;
-}
-
-.bg-white {
-  background-color: var(--wizard-bg) !important;
-}
-
-/* Normal button hierarchy */
-.bg-yellow-400,
-.bg-yellow-300,
-.bg-amber-400 {
+.bg-white,
+.bg-white\/95,
+.bg-white\/90,
+.bg-white\/92 {
   background-color: var(--wizard-button) !important;
 }
 
-/* Hover and primary action hierarchy */
+.bg-white\/10 {
+  background-color: rgba(44, 34, 25, 0.72) !important;
+}
+
+.bg-white\/15 {
+  background-color: rgba(69, 51, 36, 0.82) !important;
+}
+
+.bg-slate-100,
+.bg-slate-50 {
+  background-color: var(--wizard-button) !important;
+}
+
+/* Normal, hovered, and pressed button states */
+.bg-yellow-400,
+.bg-yellow-300,
+.bg-amber-400,
 .hover\:bg-yellow-300:hover,
 .hover\:bg-amber-400:hover,
-.hover\:bg-white:hover,
-.hover\:bg-white\/20:hover {
-  background-color: var(--wizard-button-hover) !important;
-}
-
-.hover\:bg-amber-50:hover,
-.hover\:bg-rose-50:hover,
 .active\:bg-yellow-400:active {
-  background-color: var(--wizard-button-pressed) !important;
+  background-color: var(--wizard-pressed) !important;
 }
 
-/* Primary cyan play/action treatment */
 .bg-gradient-to-r.from-yellow-300,
-.bg-gradient-to-r.from-yellow-400,
-.bg-gradient-to-r.from-cyan-400,
-.bg-gradient-to-r.from-sky-400 {
-  background-image: linear-gradient(135deg, #38bdf8 0%, #0ea5e9 55%, #0369a1 100%) !important;
+.bg-gradient-to-r.from-amber-400 {
+  background-image: linear-gradient(to right, var(--wizard-pressed), var(--wizard-button)) !important;
 }
 
-.from-yellow-300,
-.via-amber-400,
-.to-yellow-500,
-.from-yellow-400,
-.to-amber-500 {
-  --tw-gradient-from: var(--wizard-cyan) var(--tw-gradient-from-position) !important;
-  --tw-gradient-via: var(--wizard-button-hover) var(--tw-gradient-via-position) !important;
-  --tw-gradient-to: var(--wizard-button) var(--tw-gradient-to-position) !important;
-}
+.from-yellow-300 { --tw-gradient-from: var(--wizard-pressed) var(--tw-gradient-from-position); }
+.via-amber-400 { --tw-gradient-via: var(--wizard-button) var(--tw-gradient-via-position); }
+.to-yellow-500 { --tw-gradient-to: var(--wizard-pressed) var(--tw-gradient-to-position); }
+.from-yellow-400 { --tw-gradient-from: var(--wizard-highlight) var(--tw-gradient-from-position); }
+.to-amber-500 { --tw-gradient-to: var(--wizard-pressed) var(--tw-gradient-to-position); }
 
-/* Primary and secondary text hierarchy */
+/* Text and border palette */
 .text-white,
 .text-slate-50,
 .text-slate-100 {
-  color: var(--wizard-primary-text) !important;
+  color: var(--wizard-button-text) !important;
 }
 
 .text-slate-900,
 .text-slate-800,
 .text-slate-700,
 .text-slate-600 {
-  color: var(--wizard-primary-text) !important;
+  color: var(--wizard-text) !important;
 }
 
 .text-slate-500,
-.text-slate-400,
-.text-slate-300,
-.text-white\/60,
-.text-white\/70 {
-  color: var(--wizard-secondary-text) !important;
+.text-slate-400 {
+  color: #C7BEAF !important;
 }
 
 .text-yellow-300,
@@ -182,19 +149,15 @@
 .text-amber-100,
 .text-amber-200,
 .text-amber-700,
-.text-amber-600,
-.text-cyan-200,
-.text-cyan-300 {
+.text-amber-600 {
   color: var(--wizard-highlight) !important;
 }
 
-/* Borders and focus hierarchy */
 .border-white,
 .border-white\/15,
-.border-white\/20,
 .border-slate-200,
 .border-slate-300 {
-  border-color: var(--wizard-border) !important;
+  border-color: rgba(199, 190, 175, 0.28) !important;
 }
 
 .border-yellow-300,
@@ -202,20 +165,4 @@
 .border-yellow-400\/60,
 .border-amber-400 {
   border-color: var(--wizard-highlight) !important;
-}
-
-.bg-cyan-400,
-.bg-sky-400 {
-  background-color: var(--wizard-cyan) !important;
-}
-
-.hover\:bg-cyan-300:hover,
-.hover\:bg-sky-300:hover {
-  background-color: var(--wizard-highlight) !important;
-}
-
-.border-cyan-200,
-.border-cyan-300,
-.border-sky-300 {
-  border-color: rgba(99, 215, 255, 0.8) !important;
 }
