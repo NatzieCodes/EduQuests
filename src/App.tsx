@@ -267,6 +267,7 @@ export default function App() {
               setIsJoinedInRoom(true);
               setHasRoomOrInvite(true);
               setRoomModalOpen(false);
+              setBattleSetupOpen(true);
               showToast(`Joined Room #${msg.room.code} (${msg.room.members?.length ?? 1}/6 players)`);
             }
             if (msg.type === 'room:deck_synced' && msg.room.deck) {
@@ -703,6 +704,7 @@ export default function App() {
         setIsJoinedInRoom(true);
         setHasRoomOrInvite(true);
         setRoomModalOpen(false);
+        setBattleSetupOpen(true);
         showToast(`Created Room #${generatedCode}`);
       }
     },
@@ -734,6 +736,7 @@ export default function App() {
         setIsJoinedInRoom(true);
         setHasRoomOrInvite(true);
         setRoomModalOpen(false);
+        setBattleSetupOpen(true);
         showToast(`Joined Room #${cleanCode}`);
       }
     },
@@ -1035,6 +1038,12 @@ export default function App() {
           setActiveDeck(deck);
           setHasCustomNotes(true);
           showToast(`Selected ${deck.title} for the battle`);
+        }}
+        onCreateStudyDeck={(deck) => {
+          setDecks((current) => [deck, ...current]);
+          setActiveDeck(deck);
+          setHasCustomNotes(true);
+          showToast(`Loaded battle material: ${deck.title}`);
         }}
         onStartBattle={(durationSec, questionCount) => {
           const cappedCount = Math.min(questionCount, activeDeck.questions.length);
