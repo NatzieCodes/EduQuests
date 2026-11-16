@@ -57,19 +57,19 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
       aria-labelledby="customizer-title"
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-sm"
     >
-      <div className="relative w-full max-w-xl rounded-3xl bg-white/95 text-slate-900 shadow-[0_20px_60px_rgba(0,0,0,0.25)] backdrop-blur-md overflow-hidden flex flex-col max-h-[88vh]">
+      <div className="relative flex max-h-[min(88dvh,760px)] w-full max-w-xl flex-col overflow-hidden rounded-3xl bg-white/95 text-slate-900 shadow-[0_20px_60px_rgba(0,0,0,0.25)] backdrop-blur-md">
         {/* Header */}
-        <div className="px-6 pt-5 pb-3.5 bg-[oklch(0.21_0.04_265.75/_1)] text-white flex items-center justify-between shrink-0">
+        <div className="flex shrink-0 items-center justify-between gap-3 bg-[oklch(0.21_0.04_265.75/_1)] px-4 py-3.5 text-white sm:px-5">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-yellow-300 via-amber-400 to-yellow-500 text-slate-950 flex items-center justify-center shadow-sm">
-              <Sparkles className="w-5 h-5" />
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-yellow-300 via-amber-400 to-yellow-500 text-slate-950 shadow-sm">
+              <Sparkles className="h-4 w-4" />
             </div>
             <div>
-              <h2 id="customizer-title" className="text-base sm:text-lg font-display font-black tracking-wide text-white">
+              <h2 id="customizer-title" className="text-sm font-display font-black tracking-wide text-white sm:text-base">
                 CHARACTER CUSTOMIZER
               </h2>
-              <p className="text-[11px] text-slate-600">
-                Personalize your avatar sex, outfit style, and combat guardian.
+              <p className="text-[10px] text-slate-300 sm:text-[11px]">
+                Personalize your avatar, outfit, and combat guardian.
               </p>
             </div>
           </div>
@@ -77,21 +77,21 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
             type="button"
             onClick={onClose}
             aria-label="Close customizer"
-            className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-colors"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-slate-200 transition-colors hover:bg-white/20 hover:text-white"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Scrollable Inner Drawer Body */}
-        <div className="p-5 sm:p-6 space-y-5 overflow-y-auto drawer-scroll">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 drawer-scroll sm:p-5">
           {/* 1. Sex / Body Type Selection */}
           <div>
-            <label className="flex items-center gap-1.5 text-xs font-display font-extrabold text-amber-700 mb-2">
-              <User className="w-4 h-4" />
+            <label className="mb-1.5 flex items-center gap-1.5 text-[11px] font-display font-extrabold text-amber-700">
+              <User className="h-3.5 w-3.5" />
               <span>BODY TYPE / SEX PRESET</span>
             </label>
-            <div className="grid grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-3 gap-2">
               {[
                 { id: 'male', label: 'Male' },
                 { id: 'female', label: 'Female' },
@@ -100,8 +100,9 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
                 <button
                   key={g.id}
                   type="button"
-                  onClick={() => onChangeGender(g.id as any)}
-                  className={`py-2.5 px-3 rounded-2xl border text-xs font-display font-bold flex items-center justify-center gap-1.5 transition-all ${
+                  aria-pressed={gender === g.id}
+                  onClick={() => onChangeGender(g.id as 'male' | 'female' | 'neutral')}
+                  className={`flex items-center justify-center gap-1.5 rounded-xl border px-2 py-2.5 text-[11px] font-display font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
                     gender === g.id
                       ? 'bg-amber-50 border-amber-500 text-slate-950 shadow-sm'
                       : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
@@ -116,8 +117,8 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
 
           {/* 2. Guardian / Hero Class */}
           <div>
-            <label className="flex items-center gap-1.5 text-xs font-display font-extrabold text-amber-700 mb-2">
-              <Sparkles className="w-4 h-4" />
+            <label className="mb-1.5 flex items-center gap-1.5 text-[11px] font-display font-extrabold text-amber-700">
+              <Sparkles className="h-3.5 w-3.5" />
               <span>COMBAT GUARDIAN & COMPANION</span>
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -125,8 +126,9 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
                 <button
                   key={h.id}
                   type="button"
+                  aria-pressed={selectedHero === h.id}
                   onClick={() => onSelectHero(h.id)}
-                  className={`p-2.5 rounded-2xl border text-left transition-all ${
+                  className={`rounded-xl border p-2.5 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
                     selectedHero === h.id
                       ? 'bg-amber-50 border-amber-500 text-slate-900 shadow-sm'
                       : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
@@ -141,25 +143,26 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
 
           {/* 3. Outfit / Clothes Style */}
           <div>
-            <label className="flex items-center gap-1.5 text-xs font-display font-extrabold text-amber-700 mb-2">
-              <Shirt className="w-4 h-4" />
+            <label className="mb-1.5 flex items-center gap-1.5 text-[11px] font-display font-extrabold text-amber-700">
+              <Shirt className="h-3.5 w-3.5" />
               <span>OUTFIT & CLOTHES STYLE</span>
             </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {outfits.map((o) => (
                 <button
                   key={o.id}
                   type="button"
+                  aria-pressed={outfitStyle === o.id}
                   onClick={() => onChangeOutfitStyle(o.id)}
-                  className={`p-3 rounded-2xl border text-left flex items-center justify-between transition-all ${
+                  className={`flex items-center justify-between rounded-xl border p-2.5 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
                     outfitStyle === o.id
                       ? 'bg-amber-50 border-amber-500 text-slate-900 shadow-sm'
                       : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <div className={`w-6 h-6 rounded-lg bg-gradient-to-br ${o.color} border border-slate-300`} />
-                    <span className="text-xs font-display font-bold">{o.name}</span>
+                    <div className={`h-5 w-5 shrink-0 rounded-md border border-slate-300 bg-gradient-to-br ${o.color}`} />
+                    <span className="text-[11px] font-display font-bold">{o.name}</span>
                   </div>
                   {outfitStyle === o.id && <Check className="w-4 h-4 text-amber-600 shrink-0" />}
                 </button>
@@ -169,18 +172,19 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
 
           {/* 4. Accent Color Glow */}
           <div>
-            <label className="flex items-center gap-1.5 text-xs font-display font-extrabold text-amber-700 mb-2">
-              <Palette className="w-4 h-4" />
+            <label className="mb-1.5 flex items-center gap-1.5 text-[11px] font-display font-extrabold text-amber-700">
+              <Palette className="h-3.5 w-3.5" />
               <span>ENERGY ACCENT COLOR</span>
             </label>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2.5">
               {accents.map((a) => (
                 <button
                   key={a.id}
                   type="button"
                   onClick={() => onChangeAccentColor(a.id)}
                   aria-label={a.name}
-                  className={`w-9 h-9 rounded-full border-2 transition-all flex items-center justify-center ${
+                  aria-pressed={accentColor === a.id}
+                  className={`flex h-8 w-8 items-center justify-center rounded-full border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
                     accentColor === a.id ? 'border-slate-900 scale-110 shadow-md' : 'border-transparent opacity-80 hover:opacity-100'
                   }`}
                   style={{ backgroundColor: a.hex }}
@@ -193,11 +197,11 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
         </div>
 
         {/* Footer Actions */}
-        <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2.5 shrink-0">
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-slate-200 bg-slate-50 px-4 py-3 sm:px-5">
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2.5 rounded-full bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500 hover:from-yellow-200 hover:to-amber-400 text-slate-950 font-display font-black text-xs transition-all shadow-sm"
+            className="rounded-xl bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500 px-4 py-2.5 text-xs font-display font-black text-slate-950 shadow-sm transition-all hover:from-yellow-200 hover:to-amber-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
           >
             Save & Apply Customization
           </button>

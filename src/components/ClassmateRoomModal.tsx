@@ -8,7 +8,6 @@ import {
   Lock,
   Unlock,
   KeyRound,
-  ShieldCheck,
   UserPlus,
   LogOut,
   Sparkles,
@@ -38,9 +37,7 @@ interface ClassmateRoomModalProps {
   onClose: () => void;
   roomCode: string;
   isJoinedInRoom?: boolean;
-  localPlayerId?: string;
   availableRooms?: AvailableRoomItem[];
-  onlinePlayers?: OnlinePlayerSummary[];
   joinError?: string | null;
   onClearJoinError?: () => void;
   onLeaveRoom?: () => void;
@@ -60,9 +57,7 @@ export const ClassmateRoomModal: React.FC<ClassmateRoomModalProps> = ({
   onClose,
   roomCode,
   isJoinedInRoom = false,
-  localPlayerId = 'local-player',
   availableRooms = [],
-  onlinePlayers = [],
   joinError = null,
   onClearJoinError,
   onLeaveRoom,
@@ -81,10 +76,10 @@ export const ClassmateRoomModal: React.FC<ClassmateRoomModalProps> = ({
   const [directCodeInput, setDirectCodeInput] = useState('');
   const [directPasswordInput, setDirectPasswordInput] = useState('');
   const [inviteUsernameInput, setInviteUsernameInput] = useState('');
+  const [confirmLeave, setConfirmLeave] = useState(false);
 
   if (!isOpen) return null;
 
-  const otherOnlinePlayers = onlinePlayers.filter((player) => player.id !== localPlayerId);
   const displayedError = joinError || localError;
 
   const handleSelectJoinRoom = (room: AvailableRoomItem) => {
@@ -137,8 +132,8 @@ export const ClassmateRoomModal: React.FC<ClassmateRoomModalProps> = ({
     <div className="fixed inset-0 z-[120] flex items-center justify-center pointer-events-auto bg-slate-950/75 p-3 backdrop-blur-sm sm:p-6" onMouseDown={(event) => {
       if (event.target === event.currentTarget) onClose();
     }}>
-      <div role="dialog" aria-modal="true" aria-labelledby="room-directory-title" className="flex h-[82vh] max-h-[760px] w-full max-w-6xl flex-col overflow-hidden rounded-3xl bg-white text-slate-900 shadow-[0_24px_70px_rgba(0,0,0,0.35)] select-text">
-        <div className="flex shrink-0 items-center justify-between gap-3 bg-[oklch(0.21_0.04_265.75/_1)] px-6 py-4 text-white">
+      <div role="dialog" aria-modal="true" aria-labelledby="room-directory-title" className="flex h-[min(84dvh,760px)] w-full max-w-6xl flex-col overflow-hidden rounded-3xl bg-white text-slate-900 shadow-[0_24px_70px_rgba(0,0,0,0.35)] select-text">
+        <div className="flex shrink-0 items-center justify-between gap-3 bg-[oklch(0.21_0.04_265.75/_1)] px-4 py-3.5 text-white sm:px-5">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-yellow-300 via-amber-400 to-yellow-500 text-slate-950">
               <Users size={20} />
@@ -246,35 +241,32 @@ export const ClassmateRoomModal: React.FC<ClassmateRoomModalProps> = ({
             </form>
 
             {isJoinedInRoom && (
-              <div className="mt-5 rounded-2xl border border-slate-200 p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Active room</p>
-                    <p className="font-black text-slate-900">{roomCode}</p>
+              <div className="mt-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-mono font-black uppercase tracking-wider text-amber-700">Joined room</p>
+                    <p className="truncate text-xs font-black text-slate-900">#{roomCode} · {activeDeck.title}</p>
                   </div>
-                  <ShieldCheck size={22} className="text-amber-500" />
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <button type="button" onClick={onSyncDeckToRoom} className="h-8 rounded-lg border border-slate-300 px-2.5 text-[10px] font-black text-slate-700 hover:border-amber-400 hover:bg-amber-50">
+                      SYNC
+                    </button>
+                    <button type="button" onClick={() => setConfirmLeave(true)} className="flex h-8 items-center gap-1 rounded-lg px-2 text-[10px] font-black text-rose-700 hover:bg-rose-50">
+                      <LogOut size={13} /> LEAVE
+                    </button>
+                  </div>
                 </div>
-                <p className="mt-3 text-xs font-bold text-slate-500">Deck: {activeDeck.title}</p>
-                <button onClick={onSyncDeckToRoom} className="mt-3 h-9 w-full rounded-xl border-2 border-slate-900 text-xs font-black text-slate-900">SYNC DECK</button>
-                <button onClick={onLeaveRoom} className="mt-2 flex h-9 w-full items-center justify-center gap-2 rounded-xl bg-red-50 text-xs font-black text-red-600"><LogOut size={14} /> LEAVE ROOM</button>
+                {confirmLeave && (
+                  <div role="alertdialog" aria-label="Confirm leaving room" className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-2">
+                    <span className="text-[10px] font-bold text-rose-900">Leave this room?</span>
+                    <div className="flex shrink-0 gap-1.5">
+                      <button type="button" onClick={() => setConfirmLeave(false)} className="rounded-md px-2 py-1 text-[10px] font-bold text-slate-600 hover:bg-white">Cancel</button>
+                      <button type="button" onClick={() => { setConfirmLeave(false); onLeaveRoom?.(); }} className="rounded-md bg-rose-700 px-2 py-1 text-[10px] font-black text-white hover:bg-rose-800">Leave</button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
-
-            <div className="mt-5">
-              <p className="mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Online now</p>
-              <div className="space-y-2">
-                {otherOnlinePlayers.slice(0, 6).map((player) => (
-                  <div key={player.id} className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2">
-                    <div>
-                      <p className="text-xs font-black text-slate-800">{player.name}</p>
-                      <p className="text-[10px] font-bold text-slate-400">{player.blockSection}</p>
-                    </div>
-                    <span className={`h-2.5 w-2.5 rounded-full ${player.roomCode ? 'bg-amber-400' : 'bg-emerald-400'}`} />
-                  </div>
-                ))}
-                {!otherOnlinePlayers.length && <p className="rounded-xl bg-slate-50 py-4 text-center text-xs font-bold text-slate-400">No other players online</p>}
-              </div>
-            </div>
           </aside>
         </div>
       </div>

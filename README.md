@@ -18,7 +18,7 @@ You can also click the **SHARE LINK** button in the top-right bar of the game lo
 This repository is pre-configured for one-click **GitHub Pages** deployment:
 
 1. **Relative Base Path Configured**: `vite.config.ts` uses `base: './'` and all assets resolve relatively, so the built app runs cleanly on any GitHub Pages URL (`https://<your-username>.github.io/<repo-name>/`).
-2. **Offline / Static Quiz Fallback**: When hosted on static GitHub Pages without a Node backend, the **Inventory** PDF/notes quiz generator automatically falls back to client-side question extraction so all features remain 100% playable.
+2. **Backend-Required AI Quiz Generation**: PDF/TXT extraction works in the browser, but generating a quiz requires the Node backend and a server-side Gemini API key. Static hosting does not create simulated or fallback questions.
 3. **Automated GitHub Actions Workflow**: `.github/workflows/deploy.yml` automatically builds `./dist` and deploys to GitHub Pages on every push to `main` or `master`.
 
 ### Steps to Publish Your GitHub Link:
@@ -76,11 +76,12 @@ GitHub Pages can serve the EduQuests interface, but real multiplayer rooms and a
 
 1. Create a PostgreSQL database in Neon or Render.
 2. Deploy this repository as a Node Web Service on Render using `render.yaml`.
-3. Configure `DATABASE_URL`, `JWT_SECRET`, and `APP_URL`:
+3. Configure `DATABASE_URL`, `JWT_SECRET`, `GEMINI_API_KEY`, and `APP_URL`:
    - `DATABASE_URL`: PostgreSQL connection string.
    - `JWT_SECRET`: a random secret of at least 32 characters.
+   - `GEMINI_API_KEY`: a Google Gemini API key stored only in the backend environment; never use a `VITE_` variable for this key.
    - `APP_URL`: the public GitHub Pages URL.
 4. For GitHub Pages, set the frontend build environment variable `VITE_API_URL` to the Render service URL and redeploy.
 5. Add a real administrator email to the privacy policy before public release.
 
-The server provides account registration, login, session verification, account deletion, quiz generation, room WebSockets, and the live room directory.
+The quiz generator analyzes extracted PDF/TXT text, public study URLs, and supported video inputs with Gemini. Uploaded videos are limited to 14 MB; public YouTube links are also supported. The server provides account registration, login, session verification, account deletion, quiz generation, room WebSockets, and the live room directory.

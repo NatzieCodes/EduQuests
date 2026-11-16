@@ -5,10 +5,18 @@
   block_section?: string;
 }
 
+export interface FriendRequest {
+  id: string;
+  username: string;
+  blockSection: string;
+  status: 'incoming' | 'outgoing' | 'accepted';
+}
+
 const API_URL = (import.meta.env.VITE_API_URL || window.location.origin).replace(/\/$/, '');
 const TOKEN_KEY = 'eduquests-account-token';
 const LOCAL_ACCOUNTS_KEY = 'eduquests-local-accounts';
 const LOCAL_TOKEN_PREFIX = 'local-account-token:';
+const LOCAL_FRIEND_REQUESTS_KEY = 'eduquests-local-friend-requests';
 
 interface LocalAccountRecord {
   id: string;
@@ -119,6 +127,104 @@ export async function registerAccount(input: { username: string; password: strin
   });
 }
 
+function getLocalFriendRequestRows() {
+  try {
+    return JSON.parse(localStorage.getItem(LOCAL_FRIEND_REQUESTS_KEY) || '[]') as {
+      id: string;
+      requesterId: string;
+      recipientId: string;
+      status: 'pending' | 'accepted';
+    }[];
+  } catch {
+    return [];
+  }
+}
+
+export async function sendFriendRequest(username: string) {
+  const cleanedUsername = username.trim().replace(/^@/, '');
+  const token = getAccountToken();
+  if (!token) throw new Error('Sign in to add friends.');
+  if (!cleanedUsername) throw new Error('Enter a username.');
+
+  if (!token.startsWith(LOCAL_TOKEN_PREFIX)) {
+    return request<{ request: FriendRequest }>('/api/friends/requests', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ username: cleanedUsername }),
+    });
+  }
+
+  const currentId = token.slice(LOCAL_TOKEN_PREFIX.length);
+  const target = getLocalAccounts().find(
+    (account) => account.username.toLowerCase() === cleanedUsername.toLowerCase()
+  );
+  if (!target) throw new Error(`No account exists for @${cleanedUsername}.`);
+  if (target.id === currentId) throw new Error('You cannot add your own account.');
+
+  const requests = getLocalFriendRequestRows();
+  if (requests.some((item) =>
+    (item.requesterId === currentId && item.recipientId === target.id) ||
+    (item.requesterId === target.id && item.recipientId === currentId)
+  )) {
+    throw new Error(`A friend request or friendship with @${target.username} already exists.`);
+  }
+
+  const created = {
+    id: crypto.randomUUID(),
+    requesterId: currentId,
+    recipientId: target.id,
+    status: 'pending' as const,
+  };
+  localStorage.setItem(LOCAL_FRIEND_REQUESTS_KEY, JSON.stringify([...requests, created]));
+  return { request: { id: created.id, username: target.username, blockSection: target.blockSection, status: 'outgoing' as const } };
+}
+
+export async function getFriendRequests() {
+  const token = getAccountToken();
+  if (!token) return [];
+  if (!token.startsWith(LOCAL_TOKEN_PREFIX)) {
+    const result = await request<{ requests: FriendRequest[] }>('/api/friends/requests', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return result.requests;
+  }
+
+  const accountId = token.slice(LOCAL_TOKEN_PREFIX.length);
+  const accounts = getLocalAccounts();
+  return getLocalFriendRequestRows().flatMap((item) => {
+    const otherId = item.requesterId === accountId ? item.recipientId : item.requesterId;
+    const other = accounts.find((account) => account.id === otherId);
+    if (!other) return [];
+    return [{
+      id: item.id,
+      username: other.username,
+      blockSection: other.blockSection,
+      status: item.status === 'accepted' ? 'accepted' as const : item.recipientId === accountId ? 'incoming' as const : 'outgoing' as const,
+    }];
+  });
+}
+
+export async function acceptFriendRequest(requestId: string) {
+  const token = getAccountToken();
+  if (!token) throw new Error('Sign in to accept friend requests.');
+  if (!token.startsWith(LOCAL_TOKEN_PREFIX)) {
+    return request<{ accepted: boolean }>(`/api/friends/requests/${encodeURIComponent(requestId)}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action: 'accept' }),
+    });
+  }
+  const accountId = token.slice(LOCAL_TOKEN_PREFIX.length);
+  const requests = getLocalFriendRequestRows();
+  const requestIndex = requests.findIndex(
+    (item) => item.id === requestId && item.recipientId === accountId && item.status === 'pending'
+  );
+  if (requestIndex < 0) throw new Error('Friend request not found or already handled.');
+  requests[requestIndex] = { ...requests[requestIndex], status: 'accepted' };
+  localStorage.setItem(LOCAL_FRIEND_REQUESTS_KEY, JSON.stringify(requests));
+  return { accepted: true };
+}
+
 export async function loginAccount(input: { username: string; password: string }) {
   if (!usesHostedBackend) {
     const account = getLocalAccounts().find(
@@ -168,4 +274,3 @@ export async function deleteCurrentAccount() {
     headers: { Authorization: 'Bearer ' + token },
   });
 }
-

@@ -79,29 +79,35 @@ export function markProgressActive(accountId: string, progress: ScholarProgress)
 }
 
 export function awardScholarXp(accountId: string, progress: ScholarProgress, amount: number): ScholarProgress {
+  return addScholarXp(accountId, progress, amount, true);
+}
+
+function addScholarXp(
+  accountId: string,
+  progress: ScholarProgress,
+  amount: number,
+  markActive: boolean
+): ScholarProgress {
   const updated = createScholarProgress(progress.totalXp + Math.max(0, Math.floor(amount)));
   updated.streak = progress.streak;
   updated.lastActiveDate = progress.lastActiveDate;
-  const markedActive = markProgressActive(accountId, updated);
-  saveScholarProgress(accountId, markedActive);
-  return markedActive;
+  const result = markActive ? markProgressActive(accountId, updated) : updated;
+  saveScholarProgress(accountId, result);
+  return result;
 }
 
 const API_URL = (import.meta.env.VITE_API_URL || window.location.origin).replace(/\/$/, '');
 
 export async function syncScholarProgress(accountId: string, amount = 0, markActive = true): Promise<ScholarProgress> {
   const token = localStorage.getItem('eduquests-account-token');
-  if (token?.startsWith('local-account-token:')) {
+  if (!token || token.startsWith('local-account-token:')) {
     const local = loadScholarProgress(accountId);
-    return markActive
-      ? saveAndReturn(accountId, amount > 0 ? awardScholarXp(accountId, local, amount) : markProgressActive(accountId, local))
-      : local;
+    if (amount > 0) return addScholarXp(accountId, local, amount, markActive);
+    return markActive ? saveAndReturn(accountId, markProgressActive(accountId, local)) : local;
   }
 
-  if (!token) return loadScholarProgress(accountId);
-
   try {
-    const method = amount > 0 ? 'POST' : 'GET';
+    const method = amount > 0 || markActive ? 'POST' : 'GET';
     const response = await fetch(`${API_URL}/api/account/progression`, {
       method,
       headers: {
@@ -120,6 +126,7 @@ export async function syncScholarProgress(accountId: string, amount = 0, markAct
     return progress;
   } catch {
     const local = loadScholarProgress(accountId);
+    if (amount > 0) return addScholarXp(accountId, local, amount, markActive);
     return markActive ? markProgressActive(accountId, local) : local;
   }
 }
@@ -128,5 +135,3 @@ function saveAndReturn(accountId: string, progress: ScholarProgress) {
   saveScholarProgress(accountId, progress);
   return progress;
 }
-
-

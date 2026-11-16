@@ -2,7 +2,12 @@ import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { ClassmateMember, GameMode, GameShellState, HEROES, HeroId } from '../game/rules';
-import { buildEnemyModel, buildHeroModel, buildStudyRoomDiorama } from '../game/models3d';
+import {
+  buildEnemyModel,
+  buildHeroModel,
+  buildStudyRoomDiorama,
+  HeroAppearance,
+} from '../game/models3d';
 
 export interface CombatVisualEvent {
   id: number;
@@ -14,6 +19,7 @@ interface ThreeStageProps {
   shellState: GameShellState;
   mode: GameMode;
   selectedHero: HeroId;
+  appearance: HeroAppearance;
   onSelectHero?: (heroId: HeroId) => void;
   combatEvent: CombatVisualEvent | null;
   classmates?: ClassmateMember[];
@@ -35,6 +41,7 @@ export const ThreeStage: React.FC<ThreeStageProps> = ({
   shellState,
   mode,
   selectedHero,
+  appearance,
   onSelectHero,
   combatEvent,
   classmates = [],
@@ -47,6 +54,7 @@ export const ThreeStage: React.FC<ThreeStageProps> = ({
     shellState,
     mode,
     selectedHero,
+    appearance,
     onSelectHero,
     classmates,
     localPlayerId,
@@ -57,11 +65,12 @@ export const ThreeStage: React.FC<ThreeStageProps> = ({
       shellState,
       mode,
       selectedHero,
+      appearance,
       onSelectHero,
       classmates,
       localPlayerId,
     };
-  }, [shellState, mode, selectedHero, onSelectHero, classmates, localPlayerId]);
+  }, [shellState, mode, selectedHero, appearance, onSelectHero, classmates, localPlayerId]);
 
   const combatEventRef = useRef<CombatVisualEvent | null>(null);
   useEffect(() => {
@@ -151,6 +160,45 @@ export const ThreeStage: React.FC<ThreeStageProps> = ({
 
     const studyRoom = buildStudyRoomDiorama();
     lobbyGroup.add(studyRoom.root);
+    let activeLobbyAppearanceKey = '';
+    function syncLobbyAppearance(currentAppearance: HeroAppearance) {
+      const key = `${currentAppearance.gender}:${currentAppearance.outfitStyle}:${currentAppearance.accentColor}`;
+      if (key === activeLobbyAppearanceKey) return;
+      activeLobbyAppearanceKey = key;
+      const outfitColors: Record<string, number> = {
+        cozy: 0x5c4033,
+        instinct: 0xfacc15,
+        mystic: 0x2563eb,
+        valor: 0xdc2626,
+        scholar: 0x7c3aed,
+      };
+      const color = outfitColors[currentAppearance.outfitStyle];
+      if (color) {
+        studyRoom.studentTorso.traverse((object) => {
+          if (!(object instanceof THREE.Mesh)) return;
+          const materials = Array.isArray(object.material) ? object.material : [object.material];
+          const isOutfitMaterial = materials.some((material) => {
+            if (!('color' in material)) return false;
+            const hex = material.color.getHex();
+            return hex === 0x5c4033 || hex === 0x4a3228;
+          });
+          if (!object.userData.customOutfit && isOutfitMaterial) {
+            object.material = Array.isArray(object.material)
+              ? object.material.map((material) => material.clone())
+              : object.material.clone();
+            object.userData.customOutfit = true;
+          }
+          if (object.userData.customOutfit) {
+            const customized = Array.isArray(object.material) ? object.material : [object.material];
+            customized.forEach((material) => {
+              if ('color' in material) material.color.setHex(color);
+            });
+          }
+        });
+      }
+      studyRoom.studentTorso.scale.x = currentAppearance.gender === 'female' ? 1.04 : 1;
+    }
+    syncLobbyAppearance(stateRef.current.appearance);
 
     // Squadmate slots standing beside the player in the lobby (up to 5 peers = 6 room limit)
     const lobbySquadGroup = new THREE.Group();
@@ -436,15 +484,18 @@ export const ThreeStage: React.FC<ThreeStageProps> = ({
 
     // Track loaded actor models so we rebuild only when hero/mode changes
     let activePlayerHeroId: HeroId | null = null;
+    let activePlayerAppearanceKey = '';
     let activeEnemyMode: GameMode | null = null;
     let playerModelGroup: THREE.Group | null = null;
     let enemyModelGroup: THREE.Group | null = null;
 
-    function syncArenaActors(heroId: HeroId, currentMode: GameMode) {
-      if (activePlayerHeroId !== heroId) {
+    function syncArenaActors(heroId: HeroId, currentMode: GameMode, currentAppearance: HeroAppearance) {
+      const appearanceKey = `${currentAppearance.gender}:${currentAppearance.outfitStyle}:${currentAppearance.accentColor}`;
+      if (activePlayerHeroId !== heroId || activePlayerAppearanceKey !== appearanceKey) {
         activePlayerHeroId = heroId;
+        activePlayerAppearanceKey = appearanceKey;
         playerActorSlot.clear();
-        playerModelGroup = buildHeroModel(heroId);
+        playerModelGroup = buildHeroModel(heroId, currentAppearance);
         playerActorSlot.add(playerModelGroup);
       }
 
@@ -469,7 +520,7 @@ export const ThreeStage: React.FC<ThreeStageProps> = ({
       keyLight.intensity = 1.9;
     }
 
-    syncArenaActors(stateRef.current.selectedHero, stateRef.current.mode);
+    syncArenaActors(stateRef.current.selectedHero, stateRef.current.mode, stateRef.current.appearance);
 
     if (!isSoftwareGl) {
       try {
@@ -534,6 +585,7 @@ export const ThreeStage: React.FC<ThreeStageProps> = ({
       } = stateRef.current;
 
       if (curShell === 'title') {
+        syncLobbyAppearance(stateRef.current.appearance);
         lobbyGroup.visible = true;
         arenaGroup.visible = false;
         activeAnimType = null;
@@ -572,7 +624,7 @@ export const ThreeStage: React.FC<ThreeStageProps> = ({
         // Battle Arena Mode
         lobbyGroup.visible = false;
         arenaGroup.visible = true;
-        syncArenaActors(curHero, curMode);
+        syncArenaActors(curHero, curMode, stateRef.current.appearance);
 
         // Check for new combat visual trigger
         if (combatEventRef.current && combatEventRef.current.id !== lastEventId) {

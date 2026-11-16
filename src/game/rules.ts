@@ -1,6 +1,19 @@
 export type GameMode = 'raid' | 'pvp' | 'team' | 'training';
 export type GameShellState = 'title' | 'playing' | 'paused' | 'gameover';
 export type HeroId = 'shadow_shinobi' | 'arcane_scout' | 'verdant_warden' | 'aether_valkyrie';
+export type QuizDifficulty = 'Standard' | 'Advanced' | 'Boss Challenge';
+export type QuizQuestionType = 'multiple_choice' | 'identification' | 'true_false' | 'fill_in_blank';
+
+export const QUIZ_QUESTION_TYPES: QuizQuestionType[] = [
+  'multiple_choice',
+  'identification',
+  'true_false',
+  'fill_in_blank',
+];
+
+export function normalizeFreeResponse(value: string): string {
+  return value.normalize('NFKC').toLowerCase().replace(/[.,!?;:'"()[\]{}]/g, '').replace(/\s+/g, ' ').trim();
+}
 
 export interface HeroSpec {
   id: HeroId;
@@ -22,11 +35,13 @@ export interface HeroSpec {
 export interface QuizQuestion {
   id: string;
   question: string;
-  options: [string, string, string, string];
+  options: string[];
   correctIndex: number;
+  questionType?: QuizQuestionType;
+  correctAnswer?: string;
   explanation: string;
   conceptTag: string;
-  difficulty: 'Standard' | 'Advanced' | 'Boss Challenge';
+  difficulty: QuizDifficulty;
 }
 
 export interface QuizDeck {
@@ -36,6 +51,118 @@ export interface QuizDeck {
   sourceSummary: string;
   createdAt: string;
   questions: QuizQuestion[];
+}
+
+export function shuffleQuizDeck(deck: QuizDeck): QuizDeck {
+  const questions = deck.questions.map((question) => {
+    const options = question.options.map((text, index) => ({ text, index }));
+    for (let index = options.length - 1; index > 0; index -= 1) {
+      const swapIndex = Math.floor(Math.random() * (index + 1));
+      [options[index], options[swapIndex]] = [options[swapIndex], options[index]];
+    }
+    return {
+      ...question,
+      options: options.map((option) => option.text),
+      correctIndex: options.findIndex((option) => option.index === question.correctIndex),
+    };
+  });
+  for (let index = questions.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [questions[index], questions[swapIndex]] = [questions[swapIndex], questions[index]];
+  }
+  return { ...deck, questions };
+}
+
+export function normalizeGeneratedQuizQuestions(
+  input: unknown,
+  requestedCount: number,
+  requestedTypes: QuizQuestionType[],
+  difficulty: QuizDifficulty,
+): QuizQuestion[] {
+  if (!Array.isArray(input)) throw new Error('Gemini returned an invalid question list.');
+  if (!Number.isInteger(requestedCount) || requestedCount < 1 || !requestedTypes.length) {
+    throw new Error('Quiz generation requires a valid question count and at least one question type.');
+  }
+
+  const allowedTypes = new Set(requestedTypes);
+  const seenQuestions = new Set<string>();
+  const questions: QuizQuestion[] = [];
+
+  for (const [index, rawQuestion] of input.entries()) {
+    if (!rawQuestion || typeof rawQuestion !== 'object') continue;
+    const item = rawQuestion as Record<string, unknown>;
+    const question = typeof item.question === 'string' ? item.question.trim() : '';
+    const questionType = item.questionType;
+    const normalizedQuestion = question.toLowerCase().replace(/\s+/g, ' ');
+    if (
+      question.length < 8 ||
+      question.length > 500 ||
+      seenQuestions.has(normalizedQuestion) ||
+      typeof questionType !== 'string' ||
+      !QUIZ_QUESTION_TYPES.includes(questionType as QuizQuestionType) ||
+      !allowedTypes.has(questionType as QuizQuestionType)
+    ) continue;
+
+    const type = questionType as QuizQuestionType;
+    const rawOptions = Array.isArray(item.options) && item.options.every((option: unknown) => typeof option === 'string')
+      ? item.options
+        .filter((option: unknown): option is string => typeof option === 'string')
+        .map((option) => option.trim())
+      : [];
+    const rawCorrectIndex = item.correctIndex;
+    const correctAnswer = typeof item.correctAnswer === 'string' ? item.correctAnswer.trim() : '';
+    let options: string[] = [];
+    let correctIndex = -1;
+    let answer = correctAnswer;
+
+    if (type === 'multiple_choice') {
+      if (
+        rawOptions.length !== 4 ||
+        rawOptions.some((option) => !option || option.length > 300) ||
+        new Set(rawOptions.map((option) => option.toLowerCase())).size !== 4 ||
+        typeof rawCorrectIndex !== 'number' ||
+        !Number.isInteger(rawCorrectIndex) ||
+        rawCorrectIndex < 0 ||
+        rawCorrectIndex >= rawOptions.length
+      ) continue;
+      options = rawOptions;
+      correctIndex = rawCorrectIndex;
+      if (answer && answer.toLowerCase() !== options[correctIndex].toLowerCase()) continue;
+      answer = options[correctIndex];
+    } else if (type === 'true_false') {
+      if (typeof rawCorrectIndex !== 'number' || !Number.isInteger(rawCorrectIndex) || rawCorrectIndex < 0 || rawCorrectIndex > 1) continue;
+      options = ['True', 'False'];
+      correctIndex = rawCorrectIndex;
+      if (answer && answer.toLowerCase() !== options[correctIndex].toLowerCase()) continue;
+      answer = options[correctIndex];
+    } else {
+      if (rawCorrectIndex !== -1 || !answer || answer.length > 500) continue;
+    }
+
+    const explanation = typeof item.explanation === 'string' ? item.explanation.trim() : '';
+    if (!explanation || explanation.length > 1200) continue;
+
+    seenQuestions.add(normalizedQuestion);
+    questions.push({
+      id: `ai-${Date.now()}-${index}`,
+      question,
+      options,
+      correctIndex,
+      questionType: type,
+      correctAnswer: answer,
+      explanation,
+      conceptTag: typeof item.conceptTag === 'string' && item.conceptTag.trim()
+        ? item.conceptTag.trim().slice(0, 40)
+        : 'Study Material',
+      difficulty,
+    });
+    if (questions.length >= requestedCount) break;
+  }
+
+  if (questions.length === 0) {
+    throw new Error('Gemini did not return any valid questions. Try a different source or question type.');
+  }
+  return questions;
 }
 
 export interface ClassmateMember {
@@ -540,6 +667,13 @@ export interface BattleCombatState {
   status: 'active' | 'victory' | 'defeat';
 }
 
+export function isBattleVictoryAtQuestionLimit(state: BattleCombatState): boolean {
+  if (state.status !== 'active') return state.status === 'victory';
+  if (state.mode === 'training') return true;
+  if (state.mode === 'raid') return false;
+  return state.playerHp > state.enemyHp;
+}
+
 export function createInitialCombatState(mode: GameMode, heroId: HeroId): BattleCombatState {
   const hero = HEROES.find((h) => h.id === heroId) ?? HEROES[0];
   const modeSpec = BATTLE_MODES[mode];
@@ -709,26 +843,19 @@ export function parseNotesIntoFallbackQuestions(
   const sentences = cleaned
     .split(/(?:[.!?\n]+)\s*/)
     .map((s) => s.trim())
-    .filter((s) => s.length >= 15);
+    .filter((s) => s.length >= 15)
+    .filter((sentence, index, all) =>
+      all.findIndex((candidate) => candidate.toLowerCase() === sentence.toLowerCase()) === index
+    );
 
-  if (sentences.length === 0) {
-    return DEFAULT_QUIZ_DECKS[0].questions;
+  if (sentences.length < 4) {
+    return [];
   }
 
   const questions: QuizQuestion[] = [];
-  const distractorPool = [
-    'It operates strictly in constant O(1) space without state transitions.',
-    'It bypasses cellular or system regulation by disabling feedback loops.',
-    'It only applies under vacuum zero-kelvin equilibrium conditions.',
-    'It reverses the primary causal direction described in the lecture notes.',
-    'It substitutes static compile-time constants for dynamic runtime values.',
-    'It assumes indefinite scaling without resource or latency constraints.',
-    'It synchronizes through asynchronous polling rather than event-driven dispatch.',
-  ];
-
-  const totalToGenerate = Math.min(Math.max(4, targetCount), 100);
+  const totalToGenerate = Math.min(Math.max(1, targetCount), sentences.length, 100);
   for (let i = 0; i < totalToGenerate; i++) {
-    const fact = sentences[i % sentences.length];
+    const fact = sentences[i];
     const colonIdx = fact.indexOf(':');
     let concept = topicTitle || 'Study Concept';
     let statement = fact;
@@ -736,32 +863,28 @@ export function parseNotesIntoFallbackQuestions(
     if (colonIdx > 2 && colonIdx < 45) {
       concept = fact.slice(0, colonIdx).trim();
       statement = fact.slice(colonIdx + 1).trim();
+    } else {
+      concept = statement.split(/\s+/).slice(0, 4).join(' ');
     }
 
-    const correctOption =
-      statement.length > 115 ? `${statement.slice(0, 112).trim()}...` : statement;
-    const d1 = distractorPool[i % distractorPool.length];
-    const d2 = distractorPool[(i + 1) % distractorPool.length];
-    const d3 = distractorPool[(i + 2) % distractorPool.length];
-
-    const options: [string, string, string, string] = [d1, d2, d3, d1];
-    const correctIndex = i % 4;
-    const wrongChoices = [d1, d2, d3];
-    let wIdx = 0;
-    for (let slot = 0; slot < 4; slot++) {
-      if (slot === correctIndex) {
-        options[slot] = correctOption;
-      } else {
-        options[slot] = wrongChoices[wIdx++];
-      }
-    }
+    const formatFact = (candidate: string) => {
+      const separator = candidate.indexOf(':');
+      const detail = separator > 2 && separator < 45
+        ? candidate.slice(separator + 1).trim()
+        : candidate;
+      return detail.length > 115 ? `${detail.slice(0, 112).trim()}...` : detail;
+    };
+    const options: [string, string, string, string] = [
+      formatFact(fact),
+      formatFact(sentences[(i + 1) % sentences.length]),
+      formatFact(sentences[(i + 2) % sentences.length]),
+      formatFact(sentences[(i + 3) % sentences.length]),
+    ];
+    const correctIndex = 0;
 
     questions.push({
       id: `custom-${Date.now()}-${i}`,
-      question:
-        colonIdx > 2 && colonIdx < 45
-          ? `Based on your study notes, which statement accurately describes "${concept}"? (Q${i + 1})`
-          : `According to your "${topicTitle}" review notes (Point #${i + 1}), which principle holds true?`,
+      question: `Which statement from your notes accurately describes "${concept}"?`,
       options,
       correctIndex,
       explanation: `From your notes: ${fact}`,

@@ -9,6 +9,8 @@ interface StatusModalProps {
     score: number;
     bestScore: number;
     accuracyPct: number;
+    questionsAnswered: number;
+    totalQuestions: number;
     clearTimeSec: number;
     totalDamage: number;
     bossHpRemaining: number;
@@ -111,6 +113,9 @@ export const StatusModal: React.FC<StatusModalProps> = ({
             <div className="text-[10px] font-bold text-slate-400 uppercase">QUIZ ACCURACY</div>
             <div className="text-xl font-display font-black text-yellow-400 font-mono-num mt-0.5">
               {Snapshot.accuracyPct}%
+            </div>
+            <div className="mt-0.5 text-[9px] font-mono text-slate-400">
+              {Snapshot.questionsAnswered} / {Snapshot.totalQuestions} questions
             </div>
           </div>
           <div className="p-3 rounded-xl bg-slate-950 border border-white/10">

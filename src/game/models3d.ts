@@ -1,6 +1,12 @@
 import * as THREE from 'three';
 import { GameMode, HeroId } from './rules';
 
+export interface HeroAppearance {
+  gender: 'male' | 'female' | 'neutral';
+  outfitStyle: string;
+  accentColor: string;
+}
+
 /**
  * Helper to add a soft radial contact shadow disc at y = 0.015 under any grounded actor
  */
@@ -22,7 +28,7 @@ export function createContactShadow(radius = 1.1, opacity = 0.42): THREE.Mesh {
  * Builds one of the 4 playable 3D Heroes (8-12 parts each, bottom-center pivot at y=0)
  * matching both the Venge.io 4-hero squad and Pokémon GO battle companions.
  */
-export function buildHeroModel(heroId: HeroId): THREE.Group {
+export function buildHeroModel(heroId: HeroId, appearance?: HeroAppearance): THREE.Group {
   const root = new THREE.Group();
   root.name = `hero_${heroId}`;
   root.add(createContactShadow(0.95, 0.42));
@@ -298,6 +304,56 @@ export function buildHeroModel(heroId: HeroId): THREE.Group {
     rTail.rotation.z = 0.55;
     root.add(head, lTail, rTail);
     addTrainerFace(1.86, 0.04, 0xdb2777);
+  }
+
+  if (appearance) {
+    const outfitColors: Record<string, number> = {
+      cozy: 0x5c4033,
+      instinct: 0xfacc15,
+      mystic: 0x2563eb,
+      valor: 0xdc2626,
+      scholar: 0x7c3aed,
+    };
+    const accentColors: Record<string, number> = {
+      amber: 0xf59e0b,
+      cyan: 0x06b6d4,
+      violet: 0x8b5cf6,
+      rose: 0xf43f5e,
+      emerald: 0x10b981,
+    };
+    const outfitColor = outfitColors[appearance.outfitStyle];
+    if (outfitColor) {
+      root.traverse((object) => {
+        if (!(object instanceof THREE.Mesh) || object.geometry.type !== 'CylinderGeometry') return;
+        if (object.position.y < 0.9 || object.position.y > 1.5 || Math.abs(object.position.x) > 0.25) return;
+        const material = object.material;
+        if (Array.isArray(material)) {
+          object.material = material.map((part) => {
+            const clone = part.clone();
+            if ('color' in clone) clone.color.setHex(outfitColor);
+            return clone;
+          });
+        } else {
+          const clone = material.clone();
+          if ('color' in clone) clone.color.setHex(outfitColor);
+          object.material = clone;
+        }
+      });
+    }
+
+    const auraColor = accentColors[appearance.accentColor];
+    if (auraColor) {
+      const aura = new THREE.Mesh(
+        new THREE.TorusGeometry(0.78, 0.025, 8, 48),
+        new THREE.MeshBasicMaterial({ color: auraColor, transparent: true, opacity: 0.75 })
+      );
+      aura.name = 'character-custom-aura';
+      aura.rotation.x = -Math.PI / 2;
+      aura.position.y = 0.035;
+      root.add(aura);
+    }
+    if (appearance.gender === 'female') root.scale.x = 1.04;
+    if (appearance.gender === 'male') root.scale.x = 1.02;
   }
 
   return root;
@@ -1719,5 +1775,4 @@ export function buildStandingStudentModel(options?: {
     pedestalRing,
   };
 }
-
 

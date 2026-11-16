@@ -40,14 +40,26 @@ import {
   Sparkles,
   Palette,
   User,
-  Globe,
-  MessageCircle,
   ChevronRight,
+  Plus,
   Swords,
   Download,
   Maximize2,
+  Trash2,
 } from 'lucide-react';
 import { ScholarProgress } from '../services/progression';
+import {
+  acceptFriendRequest,
+  FriendRequest,
+  getFriendRequests,
+  sendFriendRequest,
+} from '../services/auth';
+import {
+  getAchievements,
+  hasClaimedDailyReward,
+  loadRewardState,
+  syncRewardState,
+} from '../services/rewards';
 
 export interface BattleInvitation {
   id: string;
@@ -101,6 +113,7 @@ interface LobbyOverlayProps {
   onlinePlayers?: OnlinePlayerSummary[];
   chatMessages?: LobbyChatMessage[];
   onSendChatMessage?: (text: string, attachment?: LobbyChatMessage['attachment']) => void;
+  onDeleteChatMessage?: (messageId: string) => void;
   invitations: BattleInvitation[];
   onSendInviteUsername: (username: string, mode: GameMode) => void;
   onAcceptInvite: (inviteId: string) => void;
@@ -117,6 +130,9 @@ interface LobbyOverlayProps {
   muted: boolean;
   onToggleMute: () => void;
   scholarProgress: ScholarProgress;
+  rewardAccountId: string;
+  onClaimDailyReward: () => Promise<boolean>;
+  onClaimAchievementReward: (achievementId: string) => Promise<boolean>;
 }
 
 const MAX_ROOM_PLAYERS = 6;
@@ -204,6 +220,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
   onlinePlayers = [],
   chatMessages = [],
   onSendChatMessage,
+  onDeleteChatMessage,
   invitations,
   onSendInviteUsername,
   onAcceptInvite,
@@ -219,8 +236,15 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
   muted,
   onToggleMute,
   scholarProgress,
+  rewardAccountId,
+  onClaimDailyReward,
+  onClaimAchievementReward,
 }) => {
   const [authModalMode, setAuthModalMode] = useState<'closed' | 'profile' | 'login' | 'register'>('closed');
+  const [profilePanel, setProfilePanel] = useState<
+    'friends' | 'missions' | 'customization' | 'career'
+  >('friends');
+  const [friendListShowAll, setFriendListShowAll] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [copiedKey, setCopiedKey] = useState<'live' | 'room' | 'gh' | 'social' | null>(null);
@@ -236,6 +260,46 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
   >([]);
   const [newFriendInput, setNewFriendInput] = useState('');
   const [friendToast, setFriendToast] = useState<string | null>(null);
+  const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
+  const [rewardRefresh, setRewardRefresh] = useState(0);
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setFriendRequests([]);
+      setCustomFriends([]);
+      return;
+    }
+    let active = true;
+    getFriendRequests()
+      .then((requests) => {
+        if (!active) return;
+        setFriendRequests(requests);
+        setCustomFriends(requests
+          .filter((request) => request.status === 'accepted')
+          .map((request) => ({
+            id: request.id,
+            name: request.username,
+            block: request.blockSection,
+            level: 1,
+          })));
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setFriendToast(error instanceof Error ? error.message : 'Unable to load friend requests.');
+      });
+    return () => {
+      active = false;
+    };
+  }, [isLoggedIn, rewardAccountId]);
+
+  useEffect(() => {
+    if (!isLoggedIn || authModalMode !== 'profile') return;
+    syncRewardState(rewardAccountId)
+      .then(() => setRewardRefresh((current) => current + 1))
+      .catch((error: unknown) => {
+        setFriendToast(error instanceof Error ? error.message : 'Unable to load rewards.');
+      });
+  }, [authModalMode, isLoggedIn, rewardAccountId]);
 
   const liveSharedUrl =
     typeof window !== 'undefined' && !window.location.origin.includes('localhost')
@@ -254,64 +318,87 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
     }, 2000);
   };
 
-  const handleAddFriendSubmit = (e: React.FormEvent) => {
+  const handleAddFriendSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleaned = newFriendInput.trim().replace(/^@/, '');
     if (!cleaned) return;
-    if (!customFriends.some((f) => f.name.toLowerCase() === cleaned.toLowerCase())) {
-      setCustomFriends((prev) => [
-        {
-          id: `fr-${Date.now()}`,
-          name: cleaned,
-          block: blockSection || 'BSCS-3A',
-          level: 40,
-        },
-        ...prev,
-      ]);
+    setFriendToast(null);
+    try {
+      const { request } = await sendFriendRequest(cleaned);
+      setFriendRequests((current) => [request, ...current.filter((item) => item.id !== request.id)]);
+      setNewFriendInput('');
+      setFriendToast(`Friend request sent to @${request.username}.`);
+    } catch (error) {
+      setFriendToast(error instanceof Error ? error.message : 'Unable to send friend request.');
     }
-    setNewFriendInput('');
-    setFriendToast(`Added @${cleaned} to your Friends list!`);
-    setTimeout(() => setFriendToast(null), 2200);
   };
 
-  // Combine real online players (excluding self) + user-added friends
+  const handleAcceptFriendRequest = async (request: FriendRequest) => {
+    try {
+      await acceptFriendRequest(request.id);
+      const updated = { ...request, status: 'accepted' as const };
+      setFriendRequests((current) => current.map((item) => item.id === request.id ? updated : item));
+      setCustomFriends((current) => [
+        { id: request.id, name: request.username, block: request.blockSection, level: 1 },
+        ...current.filter((friend) => friend.name.toLowerCase() !== request.username.toLowerCase()),
+      ]);
+      setFriendToast(`You are now friends with @${request.username}.`);
+    } catch (error) {
+      setFriendToast(error instanceof Error ? error.message : 'Unable to accept friend request.');
+    }
+  };
+
+  const handleClaimDailyReward = async () => {
+    if (await onClaimDailyReward()) setRewardRefresh((current) => current + 1);
+  };
+
+  const handleClaimAchievement = async (achievementId: string) => {
+    if (await onClaimAchievementReward(achievementId)) {
+      setRewardRefresh((current) => current + 1);
+    }
+  };
+
+  // Only saved friends belong in these profile lists; live presence decorates their status.
   const combinedFriends = React.useMemo(() => {
-    const map = new Map<
-      string,
-      { id: string; name: string; block: string; level: number; status: string; isOnline: boolean }
-    >();
-
-    for (const online of onlinePlayers) {
-      if (online.id === localPlayerId) continue;
-      map.set(online.name.toLowerCase(), {
-        id: online.id,
-        name: online.name,
-        block: online.blockSection,
-        level: 40,
-        status: online.roomCode ? `Online · In Room #${online.roomCode}` : 'Online · In Lobby',
-        isOnline: true,
-      });
-    }
-
-    for (const cf of customFriends) {
-      const key = cf.name.toLowerCase();
-      if (!map.has(key)) {
-        map.set(key, {
-          id: cf.id,
-          name: cf.name,
-          block: cf.block,
-          level: cf.level,
-          status: 'Added Friend · Tap Invite to play',
-          isOnline: false,
-        });
-      }
-    }
-
-    return Array.from(map.values());
+    return customFriends.map((friend) => {
+      const online = onlinePlayers.find((player) =>
+        player.id !== localPlayerId && player.name.toLowerCase() === friend.name.toLowerCase()
+      );
+      return {
+        id: online?.id ?? friend.id,
+        name: friend.name,
+        block: friend.block,
+        level: friend.level,
+        status: online
+          ? online.roomCode ? `Online · In Room #${online.roomCode}` : 'Online · In Lobby'
+          : 'Offline',
+        isOnline: Boolean(online),
+      };
+    });
   }, [onlinePlayers, localPlayerId, customFriends]);
+  const onlineFriendCount = combinedFriends.filter((friend) => friend.isOnline).length;
+  const visibleFriends = friendListShowAll
+    ? combinedFriends
+    : combinedFriends.filter((friend) => friend.isOnline);
 
-  const activeHeroObj = HEROES.find((h) => h.id === selectedHero) ?? HEROES[0];
-  const activeOutfitObj = OUTFIT_PRESETS.find((o) => o.id === outfitStyle) ?? OUTFIT_PRESETS[0];
+  const rewardState = React.useMemo(
+    () => loadRewardState(rewardAccountId),
+    [rewardAccountId, rewardRefresh]
+  );
+  const achievements = getAchievements(rewardAccountId, scholarProgress);
+  const availableOutfits = rewardState.claimedAchievementIds.includes('five-quizzes')
+    ? [...OUTFIT_PRESETS, {
+      id: 'scholar',
+      name: 'Scholar Robe',
+      fullName: 'Scholar Robe (Achievement Reward)',
+      topFill: '#7c3aed',
+      trimFill: '#5b21b6',
+      pantsFill: '#1e1b4b',
+      shoeFill: '#facc15',
+      badgeClass: 'from-violet-500 to-purple-800',
+    }]
+    : OUTFIT_PRESETS;
+  const activeOutfitObj = availableOutfits.find((o) => o.id === outfitStyle) ?? OUTFIT_PRESETS[0];
   const activeAccentObj = ACCENT_PRESETS.find((a) => a.id === accentColor) ?? ACCENT_PRESETS[0];
 
   // Room Chat & Real Webcam / Mic State
@@ -325,14 +412,28 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
   const [mediaPermissionError, setMediaPermissionError] = useState<string | null>(null);
 
   const [chatInput, setChatInput] = useState<string>('');
-  const [activeAttachMenu, setActiveAttachMenu] = useState<ChatAttachmentType | null>(null);
+  const [activeAttachMenu, setActiveAttachMenu] = useState<ChatAttachmentType | 'menu' | null>(null);
   const [attachUrlInput, setAttachUrlInput] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [pendingFileType, setPendingFileType] = useState<ChatAttachmentType>('photo');
+  const [pendingAttachment, setPendingAttachment] = useState<LobbyAttachment | null>(null);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const [expandedAttachment, setExpandedAttachment] = useState<LobbyChatMessage['attachment'] | null>(null);
   const [battleModeDrawerOpen, setBattleModeDrawerOpen] = useState(false);
   const [challengeMode, setChallengeMode] = useState<GameMode>('pvp');
   const [receivedBattleChallenge, setReceivedBattleChallenge] = useState<GameMode | null>(null);
+
+  useEffect(() => {
+    if (!activeAttachMenu) return;
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Element && !target.closest('[data-attachment-control]')) {
+        setActiveAttachMenu(null);
+      }
+    };
+    document.addEventListener('pointerdown', closeOnOutsideClick);
+    return () => document.removeEventListener('pointerdown', closeOnOutsideClick);
+  }, [activeAttachMenu]);
 
   // Microphone remains muted on lobby/room entry and only starts after the user enables it.
   useEffect(() => {
@@ -452,6 +553,10 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
   };
 
   const handleOpenAuthModal = (mode: 'profile' | 'login' | 'register') => {
+    if (mode === 'profile') {
+      setProfilePanel('friends');
+      setFriendListShowAll(false);
+    }
     setDraftName(isLoggedIn ? studentName : '');
     setDraftBlock(blockSection || 'BSCS-3A');
     setDraftPassword('');
@@ -485,13 +590,32 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
     onSendChatMessage?.(text, attachment);
   };
 
+  const openAttachmentPicker = (type: Exclude<ChatAttachmentType, 'link'>) => {
+    const acceptByType: Record<Exclude<ChatAttachmentType, 'link'>, string> = {
+      photo: '.jpg,.jpeg,.png,.webp',
+      video: '.mp4,.webm',
+      pdf: 'application/pdf,.pdf',
+      notes: '.txt,.md,.rtf',
+    };
+    setPendingFileType(type);
+    setActiveAttachMenu(null);
+    setAttachmentError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.accept = acceptByType[type];
+      fileInputRef.current.click();
+    }
+  };
+
   const handleSendChatSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = chatInput.trim();
-    if (!trimmed) return;
+    if (!trimmed && !pendingAttachment) return;
 
     const urlMatch = trimmed.match(/https?:\/\/[^\s]+/i);
-    if (urlMatch) {
+    if (pendingAttachment) {
+      dispatchChatMessage(trimmed || `Shared ${pendingAttachment.type}: ${pendingAttachment.title}`, pendingAttachment);
+      setPendingAttachment(null);
+    } else if (urlMatch) {
       dispatchChatMessage(trimmed, {
         type: 'link',
         title: urlMatch[0],
@@ -502,56 +626,107 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
       dispatchChatMessage(trimmed);
     }
     setChatInput('');
+    setAttachmentError(null);
+    setActiveAttachMenu(null);
   };
 
   const handleQuickShareAttachment = (type: ChatAttachmentType) => {
     if (type === 'notes') {
-      dispatchChatMessage(`Shared study notes for ${activeDeck.title}`, {
-        type: 'notes',
-        title: activeDeck.title,
-        subtitle: `${activeDeck.questions.length} Qs · ${activeDeck.subject}`,
-      });
-      setActiveAttachMenu(null);
+      openAttachmentPicker(type);
       return;
     }
 
     if (type === 'link') {
       if (activeAttachMenu === 'link') {
-        const url = attachUrlInput.trim();
-        if (!url) return;
-        dispatchChatMessage(`Shared a study hyperlink:`, {
+        const value = attachUrlInput.trim();
+        if (!value) {
+          setAttachmentError('Enter a URL before attaching it.');
+          return;
+        }
+        const url = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+        try {
+          new URL(url);
+        } catch {
+          setAttachmentError('Enter a valid web address.');
+          return;
+        }
+        setPendingAttachment({
           type: 'link',
           title: url,
-          url: url.startsWith('http') ? url : `https://${url}`,
+          url,
           subtitle: 'External Study Resource',
         });
         setAttachUrlInput('');
         setActiveAttachMenu(null);
+        setAttachmentError(null);
       } else {
         setActiveAttachMenu('link');
+        setAttachmentError(null);
       }
       return;
     }
 
-    // Trigger real file picker for photo, video, or pdf (and also dispatch if user wants immediate share)
-    setPendingFileType(type);
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
+    openAttachmentPicker(type);
+  };
+
+  const handleQuickShareStudyDeck = () => {
+    setPendingAttachment({
+      type: 'notes',
+      title: activeDeck.title,
+      subtitle: `${activeDeck.questions.length} Qs · ${activeDeck.subject}`,
+    });
+    setActiveAttachMenu(null);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const extension = file.name.split('.').pop()?.toLowerCase() || '';
+    const supportedExtensions: Record<ChatAttachmentType, string[]> = {
+      photo: ['jpg', 'jpeg', 'png', 'webp'],
+      video: ['mp4', 'webm'],
+      pdf: ['pdf'],
+      notes: ['txt', 'md', 'rtf'],
+      link: [],
+    };
+    const supportedMimes: Partial<Record<ChatAttachmentType, string[]>> = {
+      photo: ['image/jpeg', 'image/png', 'image/webp'],
+      video: ['video/mp4', 'video/webm'],
+      pdf: ['application/pdf'],
+      notes: ['text/plain', 'text/markdown', 'application/rtf', 'text/rtf'],
+    };
+    if (
+      !supportedExtensions[pendingFileType].includes(extension) ||
+      (file.type && !supportedMimes[pendingFileType]?.includes(file.type))
+    ) {
+      setAttachmentError(`That file type is not supported for ${pendingFileType}.`);
+      e.target.value = '';
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setAttachmentError('Chat attachments must be 5 MB or smaller.');
+      e.target.value = '';
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => {
-      dispatchChatMessage(`Uploaded ${pendingFileType.toUpperCase()}: ${file.name}`, {
+      if (typeof reader.result !== 'string') {
+        setAttachmentError('Could not read the selected attachment.');
+        return;
+      }
+      const data = reader.result;
+      const noteText = pendingFileType === 'notes'
+        ? new TextDecoder().decode(Uint8Array.from(atob(data.split(',')[1] || ''), (character) => character.charCodeAt(0))).slice(0, 240)
+        : '';
+      setPendingAttachment({
         type: pendingFileType,
         title: file.name,
-        url: typeof reader.result === 'string' ? reader.result : undefined,
-        subtitle: `${(file.size / 1024).toFixed(1)} KB`,
+        url: data,
+        subtitle: pendingFileType === 'notes' ? noteText : `${(file.size / 1024).toFixed(1)} KB`,
       });
+      setAttachmentError(null);
     };
+    reader.onerror = () => setAttachmentError('Could not read the selected attachment.');
     reader.readAsDataURL(file);
     e.target.value = '';
   };
@@ -723,12 +898,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
           {isJoinedInRoom && (
             <div
               data-testid="profile-top-chat-drawer"
-                className="group/room-chat w-full min-h-[420px] rounded-3xl bg-slate-950/35 text-white border border-white/25 shadow-[0_8px_32px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col cursor-pointer hover:border-yellow-400/70 hover:bg-gradient-to-br hover:from-slate-950/45 hover:via-slate-900/40 hover:to-amber-950/35 hover:ring-4 hover:ring-yellow-400/15 active:scale-[0.995] transition-all duration-200"
-              onClick={(event) => {
-                const target = event.target as HTMLElement;
-                if (target.closest('button, input, form, a')) return;
-                handleOpenVideoChat();
-              }}
+              className="group/room-chat w-full h-[min(48vh,520px)] min-h-[420px] shrink-0 rounded-3xl bg-slate-950/35 text-white border border-white/25 shadow-[0_8px_32px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col hover:border-yellow-400/70 transition-colors duration-200"
             >
               {/* When Camera is ON: Pressable Video Feeds of Joined Users at the VERY TOP of the Chat */}
               {(
@@ -843,7 +1013,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
 
               {/* Scrollable Transparent Messages Container */}
               <div
-                className="px-3.5 py-3 min-h-[300px] flex-1 overflow-y-auto drawer-scroll space-y-2 bg-transparent"
+                className="px-3.5 py-3 min-h-0 flex-1 overflow-y-auto overscroll-contain drawer-scroll space-y-2 bg-transparent"
               >
                 {chatMessages.length === 0 ? (
                   <div className="py-3 text-center text-[11px] font-mono text-white/75">
@@ -859,7 +1029,20 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                         <span className="font-display font-extrabold text-yellow-300 text-[11px]">
                           @{msg.sender}
                         </span>
-                        <span className="text-[9px] font-mono text-white/60">{msg.timestamp}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] font-mono text-white/60">{msg.timestamp}</span>
+                          {msg.senderId === localPlayerId && (
+                            <button
+                              type="button"
+                              onClick={() => onDeleteChatMessage?.(msg.id)}
+                              aria-label="Delete message"
+                              title="Delete message"
+                              className="p-1 rounded-md text-white/60 hover:text-rose-300 hover:bg-white/10 cursor-pointer"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <p className="text-white/95 text-[11px] leading-snug break-words">{msg.text}</p>
 
@@ -912,7 +1095,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
 
               {/* Optional Hyperlink URL Input Bar */}
               {activeAttachMenu === 'link' && (
-                <div className="px-3 py-1.5 bg-slate-950/60 border-t border-white/15 flex items-center gap-1.5">
+                <div data-attachment-control className="px-3 py-1.5 bg-slate-950/60 border-t border-white/15 flex items-center gap-1.5">
                   <input
                     type="text"
                     value={attachUrlInput}
@@ -929,86 +1112,95 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                   </button>
                 </div>
               )}
+              {pendingAttachment && (
+                <div className="mx-3 my-1.5 px-2.5 py-2 rounded-xl bg-slate-950/70 border border-yellow-300/40 flex items-center gap-2">
+                  {pendingAttachment.type === 'photo' && pendingAttachment.url ? (
+                    <img src={pendingAttachment.url} alt="" className="w-9 h-9 rounded-lg object-cover" />
+                  ) : (
+                    <FileText className="w-4 h-4 text-yellow-300 shrink-0" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[11px] font-bold text-white">{pendingAttachment.title}</div>
+                    <div className="text-[9px] uppercase text-white/60">{pendingAttachment.type}</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPendingAttachment(null)}
+                    aria-label="Remove attachment"
+                    className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 grid place-items-center text-white cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+              {attachmentError && (
+                <div role="alert" className="px-3 py-1 text-[10px] text-rose-200">{attachmentError}</div>
+              )}
 
-              {/* PVP and rich attachment controls */}
-              <div className="px-3 pt-1.5 bg-white/5 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setBattleModeDrawerOpen(true)}
-                  className="h-8 w-full rounded-lg bg-yellow-400 hover:bg-yellow-300 border border-yellow-200 text-[10px] font-display font-black text-slate-950 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <Swords className="h-3.5 w-3.5" />
-                  PVP / BATTLE CHALLENGE
-                </button>
-              </div>
-              <div className="px-3 pt-2 pb-1 border-t border-white/15 bg-white/5 flex items-center justify-between gap-1 shrink-0">
+              <form
+                onSubmit={handleSendChatSubmit}
+                className="relative px-3 pt-2 pb-2.5 border-t border-white/15 bg-white/5 flex items-center gap-1.5 shrink-0"
+              >
                 <input
                   ref={fileInputRef}
                   type="file"
                   onChange={handleFileChange}
                   accept={
                     pendingFileType === 'photo'
-                      ? 'image/*'
+                      ? '.jpg,.jpeg,.png,.webp'
                       : pendingFileType === 'video'
-                        ? 'video/*'
+                        ? '.mp4,.webm'
                         : pendingFileType === 'pdf'
                           ? 'application/pdf,.pdf'
-                          : undefined
+                          : '.txt,.md,.rtf'
                   }
                   className="hidden"
                 />
                 <button
                   type="button"
-                  onClick={() => handleQuickShareAttachment('photo')}
-                  className="px-2 py-1 rounded-full bg-white/15 hover:bg-white/25 border border-white/20 text-[10px] font-display font-bold text-white flex items-center gap-1 transition-colors cursor-pointer"
-                  title="Upload Photo in Chat"
+                  onClick={() => setBattleModeDrawerOpen(true)}
+                  aria-label="Open battle challenge"
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-yellow-200 bg-yellow-400 text-slate-950 transition-colors hover:bg-yellow-300 cursor-pointer"
                 >
-                  <ImageIcon className="w-3 h-3 text-yellow-300" />
-                  <span>Photo</span>
+                  <Swords className="h-4 w-4" />
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleQuickShareAttachment('video')}
-                  className="px-2 py-1 rounded-full bg-white/15 hover:bg-white/25 border border-white/20 text-[10px] font-display font-bold text-white flex items-center gap-1 transition-colors cursor-pointer"
-                  title="Upload Video in Chat"
+                  onClick={() => setActiveAttachMenu((current) => current === 'menu' ? null : 'menu')}
+                  aria-label="Add attachment"
+                  aria-expanded={activeAttachMenu === 'menu'}
+                  data-attachment-control
+                  className="p-2 rounded-full bg-white/15 hover:bg-white/25 border border-white/20 text-white transition-colors cursor-pointer"
                 >
-                  <Film className="w-3 h-3 text-amber-300" />
-                  <span>Video</span>
+                  <Plus className="w-4 h-4" />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickShareAttachment('link')}
-                  className="px-2 py-1 rounded-full bg-white/15 hover:bg-white/25 border border-white/20 text-[10px] font-display font-bold text-white flex items-center gap-1 transition-colors cursor-pointer"
-                  title="Send Hyperlink in Chat"
-                >
-                  <Link2 className="w-3 h-3 text-yellow-200" />
-                  <span>Link</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickShareAttachment('pdf')}
-                  className="px-2 py-1 rounded-full bg-white/15 hover:bg-white/25 border border-white/20 text-[10px] font-display font-bold text-white flex items-center gap-1 transition-colors cursor-pointer"
-                  title="Upload PDF File in Chat"
-                >
-                  <FileText className="w-3 h-3 text-rose-300" />
-                  <span>PDF</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickShareAttachment('notes')}
-                  className="px-2 py-1 rounded-full bg-white/15 hover:bg-white/25 border border-white/20 text-[10px] font-display font-bold text-white flex items-center gap-1 transition-colors cursor-pointer"
-                  title="Send Active Study Notes in Chat"
-                >
-                  <BookOpen className="w-3 h-3 text-amber-300" />
-                  <span>Notes</span>
-                </button>
-              </div>
-
-              {/* Chat Text Input & Send */}
-              <form
-                onSubmit={handleSendChatSubmit}
-                className="px-3 pb-2.5 pt-1 bg-white/5 flex items-center gap-1.5 shrink-0"
-              >
+                {activeAttachMenu === 'menu' && (
+                  <div data-attachment-control className="absolute z-30 bottom-16 left-3 p-2 rounded-xl bg-white shadow-xl border border-slate-200 grid grid-cols-2 gap-1.5 min-w-[180px]">
+                    {([
+                      ['photo', 'Photo', ImageIcon],
+                      ['video', 'Video', Film],
+                      ['pdf', 'PDF', FileText],
+                      ['notes', 'Notes', BookOpen],
+                      ['link', 'Link', Link2],
+                    ] as const).map(([type, label, Icon]) => (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => handleQuickShareAttachment(type)}
+                        className="px-2.5 py-2 rounded-lg text-left text-xs font-bold text-slate-800 hover:bg-amber-50 flex items-center gap-2 cursor-pointer"
+                      >
+                        <Icon className="w-4 h-4 text-amber-600" />{label}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={handleQuickShareStudyDeck}
+                      className="px-2.5 py-2 rounded-lg text-left text-xs font-bold text-slate-800 hover:bg-amber-50 flex items-center gap-2 cursor-pointer"
+                    >
+                      <BookOpen className="w-4 h-4 text-amber-600" />Study Deck
+                    </button>
+                  </div>
+                )}
                 <input
                   type="text"
                   value={chatInput}
@@ -1020,6 +1212,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                 <button
                   type="submit"
                   aria-label="Send Chat Message"
+                  disabled={!chatInput.trim() && !pendingAttachment}
                   className="p-2 rounded-full bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500 hover:from-yellow-200 hover:to-amber-400 text-slate-950 font-display font-black shadow-sm transition-all cursor-pointer"
                 >
                   <Send className="w-3.5 h-3.5" />
@@ -1027,6 +1220,28 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
               </form>
             </div>
           )}
+
+          <button
+            type="button"
+            data-testid="friend-list-shortcut"
+            onClick={() => {
+              handleOpenAuthModal('profile');
+              setFriendListShowAll(true);
+            }}
+            aria-label={`Open Friend List, ${onlineFriendCount} online`}
+            className="group/friend-list relative w-full overflow-hidden rounded-3xl border-2 border-slate-200/90 bg-white/95 p-3 text-slate-900 shadow-[0_12px_40px_rgba(0,0,0,0.18)] transition-all duration-200 hover:-translate-y-1 hover:border-yellow-400 hover:bg-gradient-to-br hover:from-amber-50/95 hover:via-white hover:to-yellow-50/90 hover:ring-4 hover:ring-yellow-400/25 hover:shadow-[0_20px_48px_rgba(250,204,21,0.38)] active:translate-y-0 cursor-pointer"
+          >
+            <span className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2 text-[10px] font-display font-black uppercase tracking-wide">
+                <Users className="h-4 w-4 text-amber-600" />
+                Friend List
+              </span>
+              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-mono font-black text-emerald-700 ring-1 ring-emerald-200">
+                {onlineFriendCount}
+              </span>
+            </span>
+            <span className="mt-1 block text-left text-[9px] font-semibold text-slate-500">friends online</span>
+          </button>
 
           {/* =================================================================
               PROFILE SECTION CARD:
@@ -1214,6 +1429,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                       type="button"
                       onClick={() => {
                         onSelectMode(mKey);
+                        if (mKey === 'training') onOpenBattleSetup('training');
                       }}
                       className={`py-2 px-1 rounded-xl text-center transition-all cursor-pointer ${
                         isSelected
@@ -1247,17 +1463,18 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                 data-start="true"
                 onClick={(e) => {
                   e.currentTarget.blur();
-                  onOpenRoomModal();
+                  if (selectedMode === 'training' || isJoinedInRoom) onOpenBattleSetup(selectedMode);
+                  else onOpenRoomModal();
                 }}
                 className="w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500 hover:from-yellow-200 hover:to-amber-400 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99] text-slate-950 font-display font-black text-base tracking-wide flex items-center justify-center gap-2 shadow-[0_8px_24px_rgba(245,158,11,0.45)] hover:shadow-[0_12px_28px_rgba(245,158,11,0.6)] transition-all whitespace-nowrap cursor-pointer"
               >
-                <span>START</span>
+                <span>{selectedMode === 'training' ? 'CREATE SOLO GAME' : 'START'}</span>
               </button>
             </div>
 
             {/* TIER 3: Secondary Setup Drawers (Room & Inventory — Distinct Secondary Styling) */}
             <div className="mt-3 pt-2.5 border-t border-slate-200/80 grid grid-cols-2 gap-2">
-              <button
+              {selectedMode !== 'training' && <button
                 type="button"
                 data-testid="open-room-btn"
                 onClick={onOpenRoomModal}
@@ -1270,12 +1487,12 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                 <span className="text-[10px] font-mono text-yellow-300/90 shrink-0">
                   {isJoinedInRoom ? `#${roomCode}` : 'Join'}
                 </span>
-              </button>
+              </button>}
 
               <button
                 type="button"
                 onClick={() => onOpenInventoryModal(false)}
-                className="py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 hover:-translate-y-0.5 active:translate-y-0 border border-slate-300 text-slate-800 font-display font-extrabold text-xs flex items-center justify-between gap-1.5 transition-all cursor-pointer"
+                className={`${selectedMode === 'training' ? 'col-span-2' : ''} py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 hover:-translate-y-0.5 active:translate-y-0 border border-slate-300 text-slate-800 font-display font-extrabold text-xs flex items-center justify-between gap-1.5 transition-all cursor-pointer`}
               >
                 <span className="flex items-center gap-1.5 truncate">
                   <FolderOpen className="w-3.5 h-3.5 text-amber-600 shrink-0" />
@@ -1581,10 +1798,8 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
       {/* =====================================================================
           PLAYER PROFILE POP-UP WINDOW
           - Level 0 Dark Slate Header with Segmented Switcher (ME / PROFILE | LOGIN | REGISTER)
-          - Section 01 (Left Top): 3D Full-Body Standing Lobby Character with Motion (<ProfileCharacter3D />)
-          - Section 02 (Left Bottom): Character Customization
-          - Section 03 (Right Top): Friends & Live Online Players + Socials
-          - Section 04 (Right Bottom): Scholar Combat Record
+          - Left: 3D character and compact career summary
+          - Right: section navigation and selected content
          ===================================================================== */}
       {authModalMode !== 'closed' && (
         <div
@@ -1596,7 +1811,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
         >
           <div
             className={`w-full ${
-              authModalMode === 'profile' ? 'max-w-4xl' : 'max-w-md'
+              authModalMode === 'profile' ? 'max-w-6xl h-[90vh]' : 'max-w-md'
             } max-h-[90vh] rounded-3xl bg-white text-slate-900 shadow-[0_24px_70px_rgba(0,0,0,0.4)] overflow-hidden flex flex-col`}
           >
             {/* LEVEL 0: Dark Slate Modal Header with Clear Purpose & Segmented Switcher */}
@@ -1607,7 +1822,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                 </div>
                 <h2 id="auth-modal-title" className="text-lg sm:text-xl font-display font-black text-white">
                   {authModalMode === 'profile'
-                    ? `${isLoggedIn ? studentName : 'Guest'} & ${activeHeroObj.name}`
+                    ? `${isLoggedIn ? `@${studentName}` : 'Guest Scholar'}`
                     : authModalMode === 'register'
                     ? 'Register Student Account'
                     : 'Student Account Login'}
@@ -1664,44 +1879,39 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
               </div>
             </div>
 
-            {/* Scrollable Modal Body */}
-            <div className="p-5 sm:p-6 overflow-y-auto drawer-scroll flex-1">
+            <div className={`p-3 sm:p-4 flex-1 min-h-0 ${authModalMode === 'profile' ? 'overflow-y-auto sm:overflow-hidden drawer-scroll' : 'overflow-y-auto drawer-scroll'}`}>
               {authModalMode === 'profile' ? (
                 <div
                   data-testid="student-profile-view"
-                  className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start"
+                  className="grid grid-cols-1 grid-rows-[auto_auto_minmax(300px,1fr)] sm:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] sm:grid-rows-[minmax(0,1fr)_auto] gap-3 min-h-full sm:h-full sm:min-h-0 items-stretch sm:overflow-hidden"
                 >
-                  {/* =========================================================
-                      LEFT COLUMN (7 COLS):
-                      Section 01: 3D Full-Body Standing Character & Companion Stage
-                      Section 02: Character Customization Directly Underneath
-                     ========================================================= */}
-                  <div className="lg:col-span-7 flex flex-col gap-4">
+                  {/* Character and customization occupy the left and dynamic right columns. */}
+                  <div className="contents">
                     {/* SECTION 01: 3D Standing Character Stage */}
                     <section
                       data-testid="profile-fullbody-character"
-                      className="relative rounded-3xl bg-gradient-to-b from-sky-200/80 via-amber-50/60 to-slate-100 border border-slate-200 p-4 sm:p-5 shadow-inner overflow-hidden flex flex-col justify-between"
+                      className="relative col-span-1 col-start-1 row-start-1 sm:col-span-1 sm:row-start-1 min-h-0 rounded-3xl bg-gradient-to-b from-sky-200/80 via-amber-50/60 to-slate-100 border border-slate-200 p-3 sm:p-4 shadow-inner overflow-hidden flex flex-col justify-between"
                     >
                       {/* Section Header Overlay */}
                       <div className="flex items-start justify-between gap-2 z-10">
                         <div>
-                          <div className="text-[10px] font-mono font-bold text-amber-800 uppercase tracking-widest">
-                            SECTION 01 · 3D STANDING CHARACTER (DRAG TO ROTATE)
+                          <div className="text-[9px] sm:text-[10px] font-mono font-bold text-amber-800 uppercase tracking-widest">
+                            SCHOLAR PROFILE · DRAG TO ROTATE
                           </div>
-                          <div className="text-xl font-display font-black text-slate-900 leading-tight mt-0.5">
+                          <div className="text-base sm:text-xl font-display font-black text-slate-900 leading-tight mt-0.5 truncate">
                             {isLoggedIn ? `@${studentName}` : 'GuestScholar'}
                           </div>
                           <div className="text-xs font-display font-bold text-slate-600">
-                            Standing with Otter Companion &amp; {activeHeroObj.name}
+                            {isLoggedIn ? blockSection : 'Guest Session'}
                           </div>
                         </div>
                         <span className="px-3 py-1 rounded-xl bg-slate-900 text-yellow-300 font-mono font-bold text-xs shadow-2xs tabular-nums">
-                          {isLoggedIn ? blockSection : 'GUEST'} · CP {activeHeroObj.cp}
+                          LEVEL {scholarProgress.level}
                         </span>
                       </div>
 
                       {/* Real 3D Standing Character & Companion Canvas */}
-                      <div className="relative my-1 flex items-center justify-center">
+                      <div className="relative my-0 flex min-h-0 flex-1 items-center justify-center">
                         <ProfileCharacter3D
                           gender={characterGender}
                           topHex={activeOutfitObj.topFill}
@@ -1739,343 +1949,425 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                       </div>
                     </section>
 
-                    {/* SECTION 02: UNDER YOUR CHARACTER — Character Customization */}
-                    <section
-                      data-testid="profile-character-customization"
-                      className="rounded-3xl bg-slate-50 border border-slate-200 p-4 sm:p-5 space-y-4"
+                  </div>
+
+                  <section className="col-span-1 col-start-1 row-start-2 sm:col-start-1 sm:row-start-2 min-h-0 rounded-3xl bg-slate-50 border border-slate-200 p-3 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <div className="text-[9px] font-mono font-bold text-amber-700 uppercase tracking-widest">CAREER RECORD</div>
+                        <h3 className="text-sm font-display font-black text-slate-900">Scholar Activity</h3>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFriendListShowAll(false);
+                          setProfilePanel('career');
+                        }}
+                        className="shrink-0 rounded-lg bg-slate-900 px-2.5 py-2 text-[10px] font-display font-black text-yellow-300 hover:bg-slate-800 cursor-pointer"
+                      >
+                        View Full Record
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5 text-xs">
+                      <div className="min-w-0 rounded-lg bg-white border border-slate-200 px-2 py-1.5">
+                        <div className="truncate text-[9px] font-mono text-slate-500">Arena Battles Won</div>
+                        <div className="text-xs font-display font-black text-slate-900 tabular-nums">{rewardState.battleWins} Wins</div>
+                      </div>
+                      <div className="min-w-0 rounded-lg bg-white border border-slate-200 px-2 py-1.5">
+                        <div className="truncate text-[9px] font-mono text-slate-500">Questions Mastered</div>
+                        <div className="text-xs font-display font-black text-slate-900 tabular-nums">{rewardState.quizzesCompleted}</div>
+                      </div>
+                      <div className="min-w-0 rounded-lg bg-white border border-slate-200 px-2 py-1.5">
+                        <div className="truncate text-[9px] font-mono text-slate-500">Total Scholar XP</div>
+                        <div className="text-xs font-display font-black text-slate-900 tabular-nums">{scholarProgress.totalXp.toLocaleString()} XP</div>
+                      </div>
+                      <div className="min-w-0 rounded-lg bg-white border border-slate-200 px-2 py-1.5">
+                        <div className="truncate text-[9px] font-mono text-slate-500">Active Study Topic</div>
+                        <div className="truncate text-xs font-display font-black text-amber-700">{activeDeck.title}</div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <div className="col-span-1 col-start-1 row-start-3 sm:col-start-2 sm:row-start-1 sm:row-span-2 min-h-0 flex flex-col gap-3">
+                    <nav
+                      aria-label="Profile sections"
+                      className="shrink-0 grid grid-cols-3 gap-1 p-1.5 rounded-2xl bg-slate-100 border border-slate-200"
                     >
-                      <div className="flex items-start justify-between border-b border-slate-200 pb-2.5">
-                        <div>
-                          <div className="text-[10px] font-mono font-bold text-amber-700 uppercase tracking-widest">
-                            SECTION 02 · APPEARANCE &amp; LOADOUT
+                      {([
+                        ['friends', 'Friends', Users],
+                        ['missions', 'Missions', Trophy],
+                        ['customization', 'Character Customization', Shirt],
+                      ] as const).map(([panel, label, Icon]) => (
+                        <button
+                          key={panel}
+                          type="button"
+                          aria-pressed={profilePanel === panel}
+                          onClick={() => {
+                            setFriendListShowAll(false);
+                            setProfilePanel(panel);
+                          }}
+                          className={`h-12 min-w-0 rounded-xl px-0.5 sm:px-1 py-1 text-[8px] sm:text-[10px] font-display font-bold flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer ${
+                            profilePanel === panel
+                              ? 'bg-slate-900 text-yellow-300 shadow-sm'
+                              : 'text-slate-600 hover:bg-white hover:text-slate-900'
+                          }`}
+                        >
+                          <Icon className="w-4 h-4" />
+                          <span className="text-center leading-tight">{label}</span>
+                        </button>
+                      ))}
+                    </nav>
+                    {profilePanel === 'customization' && (
+                      <section
+                        data-testid="profile-character-customization"
+                        className="min-h-0 flex-1 overflow-y-auto drawer-scroll rounded-3xl bg-slate-50 border border-slate-200 p-3 sm:p-4 space-y-3"
+                      >
+                        <div className="flex items-start justify-between border-b border-slate-200 pb-2.5">
+                          <div>
+                            <div className="text-[10px] font-mono font-bold text-amber-700 uppercase tracking-widest">
+                              APPEARANCE &amp; LOADOUT
+                            </div>
+                            <h3 className="text-sm font-display font-black text-slate-900 flex items-center gap-1.5 mt-0.5">
+                              <Shirt className="w-4 h-4 text-amber-600" />
+                              <span>Character Customization</span>
+                            </h3>
+                            <p className="text-[11px] text-slate-500">
+                              Changes update your character preview above in real time.
+                            </p>
                           </div>
-                          <h3 className="text-sm font-display font-black text-slate-900 flex items-center gap-1.5 mt-0.5">
-                            <Shirt className="w-4 h-4 text-amber-600" />
-                            <span>Character Customization</span>
-                          </h3>
-                          <p className="text-[11px] text-slate-500">
-                            Changes update your 3D standing character above in real time.
-                          </p>
                         </div>
-                      </div>
-
-                      {/* Body Type / Sex */}
-                      <div>
-                        <label className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-slate-600 uppercase tracking-wider mb-1.5">
-                          <User className="w-3.5 h-3.5 text-amber-600" />
-                          <span>1. Body Proportions</span>
-                        </label>
-                        <div className="grid grid-cols-3 gap-2">
-                          {[
-                            { id: 'male', label: 'Male' },
-                            { id: 'female', label: 'Female' },
-                            { id: 'neutral', label: 'Neutral' },
-                          ].map((g) => {
-                            const active = characterGender === g.id;
-                            return (
-                              <button
-                                key={g.id}
-                                type="button"
-                                onClick={() => onChangeCharacterGender?.(g.id as 'male' | 'female' | 'neutral')}
-                                className={`py-2 px-3 rounded-xl border text-xs font-display font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                                  active
-                                    ? 'bg-slate-900 border-slate-900 text-yellow-300 shadow-2xs font-black'
-                                    : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-100 text-slate-700'
-                                }`}
-                              >
-                                {active && <Check className="w-3.5 h-3.5 text-yellow-400" />}
-                                <span>{g.label}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Outfit & Clothes Style */}
-                      <div>
-                        <label className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-slate-600 uppercase tracking-wider mb-1.5">
-                          <Shirt className="w-3.5 h-3.5 text-amber-600" />
-                          <span>2. Outfit &amp; Sweater Style</span>
-                        </label>
-                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
-                          {OUTFIT_PRESETS.map((o) => {
-                            const active = outfitStyle === o.id;
-                            return (
-                              <button
-                                key={o.id}
-                                type="button"
-                                onClick={() => onChangeOutfitStyle?.(o.id)}
-                                className={`p-2 rounded-xl border text-left flex flex-col gap-1 transition-all cursor-pointer ${
-                                  active
-                                    ? 'bg-slate-900 border-slate-900 text-yellow-300 shadow-2xs'
-                                    : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-100 text-slate-700'
-                                }`}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <span
-                                    className={`w-4 h-4 rounded-md bg-gradient-to-br ${o.badgeClass} border border-white/40`}
-                                  />
-                                  {active && <Check className="w-3 h-3 text-yellow-400" />}
-                                </div>
-                                <span className="text-[11px] font-display font-bold leading-tight truncate">
-                                  {o.name}
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Combat Guardian & Energy Aura */}
-                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 pt-1">
-                        <div className="sm:col-span-7">
+                        <div>
                           <label className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-slate-600 uppercase tracking-wider mb-1.5">
-                            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                            <span>3. 3D Guardian Companion</span>
+                            <User className="w-3.5 h-3.5 text-amber-600" />
+                            <span>Body Proportions</span>
                           </label>
-                          <div className="grid grid-cols-2 gap-1.5">
-                            {HEROES.map((h) => {
-                              const active = selectedHero === h.id;
+                          <div className="grid grid-cols-3 gap-2">
+                            {[
+                              { id: 'male', label: 'Male' },
+                              { id: 'female', label: 'Female' },
+                              { id: 'neutral', label: 'Neutral' },
+                            ].map((g) => {
+                              const active = characterGender === g.id;
                               return (
                                 <button
-                                  key={h.id}
+                                  key={g.id}
                                   type="button"
-                                  onClick={() => onSelectHero?.(h.id)}
-                                  className={`p-2 rounded-xl border text-left transition-all cursor-pointer ${
+                                  onClick={() => onChangeCharacterGender?.(g.id as 'male' | 'female' | 'neutral')}
+                                  className={`py-2 px-3 rounded-xl border text-xs font-display font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                                     active
-                                      ? 'bg-slate-900 border-slate-900 text-yellow-300 font-black shadow-2xs'
+                                      ? 'bg-slate-900 border-slate-900 text-yellow-300 shadow-2xs font-black'
                                       : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-100 text-slate-700'
                                   }`}
                                 >
-                                  <div className="text-[11px] font-display font-bold truncate">{h.name}</div>
-                                  <div
-                                    className={`text-[10px] font-mono font-bold tabular-nums ${
-                                      active ? 'text-yellow-200/80' : 'text-amber-700'
-                                    }`}
-                                  >
-                                    CP {h.cp}
-                                  </div>
+                                  {active && <Check className="w-3.5 h-3.5 text-yellow-400" />}
+                                  <span>{g.label}</span>
                                 </button>
                               );
                             })}
                           </div>
                         </div>
-
-                        <div className="sm:col-span-5">
+                        <div>
                           <label className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-slate-600 uppercase tracking-wider mb-1.5">
-                            <Palette className="w-3.5 h-3.5 text-amber-600" />
-                            <span>4. Pedestal Aura</span>
+                            <Shirt className="w-3.5 h-3.5 text-amber-600" />
+                            <span>Outfit &amp; Sweater Style</span>
                           </label>
-                          <div className="flex items-center gap-2 pt-1">
-                            {ACCENT_PRESETS.map((a) => (
-                              <button
-                                key={a.id}
-                                type="button"
-                                onClick={() => onChangeAccentColor?.(a.id)}
-                                aria-label={a.name}
-                                className={`w-7 h-7 rounded-full border-2 transition-all flex items-center justify-center cursor-pointer ${
-                                  accentColor === a.id
-                                    ? 'border-slate-950 scale-110 shadow-sm'
-                                    : 'border-transparent opacity-80 hover:opacity-100'
-                                }`}
-                                style={{ backgroundColor: a.hex }}
+                          <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                            {availableOutfits.map((o) => {
+                              const active = outfitStyle === o.id;
+                              return (
+                                <button
+                                  key={o.id}
+                                  type="button"
+                                  onClick={() => onChangeOutfitStyle?.(o.id)}
+                                  className={`p-2 rounded-xl border text-left flex flex-col gap-1 transition-all cursor-pointer ${
+                                    active
+                                      ? 'bg-slate-900 border-slate-900 text-yellow-300 shadow-2xs'
+                                      : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-100 text-slate-700'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span className={`w-4 h-4 rounded-md bg-gradient-to-br ${o.badgeClass} border border-white/40`} />
+                                    {active && <Check className="w-3 h-3 text-yellow-400" />}
+                                  </div>
+                                  <span className="text-[11px] font-display font-bold leading-tight truncate">{o.name}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 pt-1">
+                          <div className="sm:col-span-7">
+                            <label className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                              <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                              <span>Guardian Style</span>
+                            </label>
+                            <div className="grid grid-cols-2 gap-1.5">
+                              {HEROES.map((hero) => {
+                                const active = selectedHero === hero.id;
+                                return (
+                                  <button
+                                    key={hero.id}
+                                    type="button"
+                                    onClick={() => onSelectHero?.(hero.id)}
+                                    className={`p-2 rounded-xl border text-left transition-all cursor-pointer ${
+                                      active
+                                        ? 'bg-slate-900 border-slate-900 text-yellow-300 font-black shadow-2xs'
+                                        : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-100 text-slate-700'
+                                    }`}
+                                  >
+                                    <div className="text-[11px] font-display font-bold truncate">
+                                      {hero.name === 'Kurogami' ? 'Guardian' : hero.name}
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                          <div className="sm:col-span-5">
+                            <label className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                              <Palette className="w-3.5 h-3.5 text-amber-600" />
+                              <span>Pedestal Aura</span>
+                            </label>
+                            <div className="flex items-center gap-2 pt-1">
+                              {ACCENT_PRESETS.map((preset) => (
+                                <button
+                                  key={preset.id}
+                                  type="button"
+                                  onClick={() => onChangeAccentColor?.(preset.id)}
+                                  aria-label={preset.name}
+                                  className={`w-7 h-7 rounded-full border-2 transition-all flex items-center justify-center cursor-pointer ${
+                                    accentColor === preset.id
+                                      ? 'border-slate-950 scale-110 shadow-sm'
+                                      : 'border-transparent opacity-80 hover:opacity-100'
+                                  }`}
+                                  style={{ backgroundColor: preset.hex }}
+                                >
+                                  {accentColor === preset.id && <Check className="w-3.5 h-3.5 text-slate-950 stroke-[3]" />}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </section>
+                    )}
+                    {profilePanel === 'friends' && (
+                      <section
+                        data-testid="profile-friends-socials"
+                        className="min-h-0 flex-1 overflow-hidden rounded-3xl bg-slate-50 border border-slate-200 p-3 sm:p-4 flex flex-col gap-3"
+                      >
+                        <div className="flex min-h-0 flex-1 flex-col gap-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <h3 className="text-xs font-display font-black text-slate-900 flex items-center gap-1.5">
+                              <UserPlus className="w-3.5 h-3.5 text-amber-600" />
+                              <span>Add Friends</span>
+                            </h3>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyText(roomInviteUrl, 'social')}
+                              className="rounded-lg bg-yellow-400 px-2 py-1 text-[9px] font-display font-black text-slate-950 hover:bg-yellow-300 cursor-pointer"
+                            >
+                              {copiedKey === 'social' ? 'Copied Invite Link' : 'Copy Invite Link'}
+                            </button>
+                          </div>
+                          <form onSubmit={handleAddFriendSubmit} className="flex items-center gap-1.5">
+                            <input
+                              type="text"
+                              value={newFriendInput}
+                              onChange={(e) => setNewFriendInput(e.target.value)}
+                              disabled={!isLoggedIn}
+                              placeholder="Search username to add..."
+                              className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs text-slate-900 focus:outline-none focus:border-amber-500"
+                            />
+                            <button
+                              type="submit"
+                              disabled={!isLoggedIn}
+                              className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-display font-extrabold text-xs flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
+                            >
+                              <UserPlus className="w-3.5 h-3.5 text-yellow-400" />
+                              <span>Add</span>
+                            </button>
+                          </form>
+                          {friendToast && (
+                            <div className="px-3 py-1.5 rounded-xl bg-amber-100 border border-amber-300 text-[11px] font-bold text-amber-900">
+                              {friendToast}
+                            </div>
+                          )}
+                          {friendRequests.filter((request) => request.status !== 'accepted').map((request) => (
+                            <div key={request.id} className="px-3 py-2 rounded-xl bg-white border border-slate-200 flex items-center justify-between gap-2">
+                              <span className="text-[11px] font-bold text-slate-700">
+                                @{request.username} · {request.status === 'incoming' ? 'sent you a request' : 'request pending'}
+                              </span>
+                              {request.status === 'incoming' && (
+                                <button
+                                  type="button"
+                                  onClick={() => void handleAcceptFriendRequest(request)}
+                                  className="px-2.5 py-1 rounded-lg bg-yellow-400 text-slate-950 text-[10px] font-display font-black cursor-pointer"
+                                >
+                                  Accept
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="min-h-0 flex-1 border-t border-slate-200 pt-2 flex flex-col">
+                          <div className="flex items-center justify-between gap-2 pb-2">
+                            <h3 className="text-xs font-display font-black text-slate-900 flex items-center gap-1.5">
+                              <Users className="w-3.5 h-3.5 text-amber-600" />
+                              <span>{friendListShowAll ? 'Friend List' : 'Online Friends'}</span>
+                            </h3>
+                            <span className="px-2 py-1 rounded-lg bg-slate-900 text-yellow-300 font-mono font-bold text-[9px]">
+                              {onlineFriendCount} ONLINE
+                            </span>
+                          </div>
+                          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto drawer-scroll pr-1">
+                            {visibleFriends.length === 0 ? (
+                              <div className="p-3 rounded-xl bg-white border border-dashed border-slate-300 text-center">
+                                <div className="text-xs font-display font-bold text-slate-800">{friendListShowAll ? 'No Friends Yet' : 'No Friends Online'}</div>
+                                <p className="text-[10px] text-slate-500">{friendListShowAll ? 'Accepted friends will appear here with their live status.' : 'Online friends will appear here when they enter the lobby.'}</p>
+                              </div>
+                            ) : visibleFriends.map((friend) => (
+                              <div
+                                key={friend.id}
+                                className="p-2 rounded-xl bg-white border border-slate-200 flex items-center justify-between gap-2"
                               >
-                                {accentColor === a.id && (
-                                  <Check className="w-3.5 h-3.5 text-slate-950 stroke-[3]" />
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <div className="w-7 h-7 rounded-full bg-slate-900 text-yellow-300 font-display font-black text-xs flex items-center justify-center shrink-0">
+                                    {friend.name[0]?.toUpperCase()}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="text-xs font-display font-black text-slate-900 truncate">@{friend.name}</div>
+                                    <div className="text-[10px] font-mono text-slate-500 truncate">{friend.status}</div>
+                                  </div>
+                                </div>
+                                {friend.isOnline ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      onSendInviteUsername(friend.name, selectedMode);
+                                      setFriendToast(`Sent live battle invite to @${friend.name}!`);
+                                      setTimeout(() => setFriendToast(null), 2200);
+                                    }}
+                                    className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-900 text-slate-800 hover:text-yellow-300 border border-slate-200 font-display font-extrabold text-[10px] shrink-0 transition-colors cursor-pointer"
+                                  >
+                                    Invite
+                                  </button>
+                                ) : (
+                                  <span className="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-[9px] font-mono font-bold text-slate-500">OFFLINE</span>
                                 )}
-                              </button>
+                              </div>
                             ))}
                           </div>
                         </div>
-                      </div>
-                    </section>
-                  </div>
+                      </section>
+                    )}
 
-                  {/* =========================================================
-                      RIGHT COLUMN (5 COLS):
-                      Section 03: Friends & Live Online Players + Socials
-                      Section 04: Scholar Combat Record
-                     ========================================================= */}
-                  <div className="lg:col-span-5 flex flex-col gap-4">
-                    {/* SECTION 03: FRIENDS & SOCIALS SECTION */}
-                    <section
-                      data-testid="profile-friends-socials"
-                      className="rounded-3xl bg-slate-50 border border-slate-200 p-4 sm:p-5 space-y-3.5"
-                    >
-                      <div className="flex items-start justify-between border-b border-slate-200 pb-2.5">
-                        <div>
-                          <div className="text-[10px] font-mono font-bold text-amber-700 uppercase tracking-widest">
-                            SECTION 03 · FRIENDS &amp; LIVE PLAYERS
+                    {profilePanel === 'career' && (
+                      <section className="min-h-0 flex-1 overflow-y-auto drawer-scroll rounded-3xl bg-slate-50 border border-slate-200 p-3 sm:p-4 space-y-3">
+                        <div className="flex items-center justify-between gap-2 border-b border-slate-200 pb-2">
+                          <div>
+                            <div className="text-[10px] font-mono font-bold text-amber-700 uppercase tracking-widest">CAREER RECORD</div>
+                            <h3 className="text-base font-display font-black text-slate-900">Full Scholar Record</h3>
                           </div>
-                          <h3 className="text-sm font-display font-black text-slate-900 flex items-center gap-1.5 mt-0.5">
-                            <Users className="w-4 h-4 text-amber-600" />
-                            <span>Friends &amp; Socials</span>
-                          </h3>
-                          <p className="text-[11px] text-slate-500">
-                            Real online players &amp; classmates you can invite to battle.
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFriendListShowAll(false);
+                              setProfilePanel('friends');
+                            }}
+                            className="rounded-lg bg-white px-2.5 py-2 text-[10px] font-display font-bold text-slate-700 border border-slate-200 hover:bg-amber-50 cursor-pointer"
+                          >
+                            Back to Sections
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="p-3 rounded-xl bg-white border border-slate-200">
+                            <div className="text-[10px] text-slate-500">Arena battles won</div>
+                            <div className="text-sm font-display font-black text-slate-900">{rewardState.battleWins}</div>
+                          </div>
+                          <div className="p-3 rounded-xl bg-white border border-slate-200">
+                            <div className="text-[10px] text-slate-500">Questions mastered</div>
+                            <div className="text-sm font-display font-black text-slate-900">{rewardState.quizzesCompleted}</div>
+                          </div>
+                          <div className="p-3 rounded-xl bg-white border border-slate-200">
+                            <div className="text-[10px] text-slate-500">Total scholar XP</div>
+                            <div className="text-sm font-display font-black text-slate-900">{scholarProgress.totalXp.toLocaleString()}</div>
+                          </div>
+                          <div className="p-3 rounded-xl bg-white border border-slate-200">
+                            <div className="text-[10px] text-slate-500">Active study topic</div>
+                            <div className="text-sm font-display font-black text-slate-900 truncate">{activeDeck.title}</div>
+                          </div>
+                          <div className="p-3 rounded-xl bg-white border border-slate-200">
+                            <div className="text-[10px] text-slate-500">Login streak</div>
+                            <div className="text-sm font-display font-black text-slate-900">{scholarProgress.streak} days</div>
+                          </div>
+                          <div className="p-3 rounded-xl bg-white border border-slate-200">
+                            <div className="text-[10px] text-slate-500">Achievements claimed</div>
+                            <div className="text-sm font-display font-black text-slate-900">{rewardState.claimedAchievementIds.length}</div>
+                          </div>
+                        </div>
+                      </section>
+                    )}
+
+                    {profilePanel === 'missions' && (
+                      <section
+                        data-testid="profile-missions"
+                        className="min-h-0 flex-1 overflow-hidden rounded-3xl bg-slate-50 border border-slate-200 p-3 sm:p-4 flex flex-col gap-3"
+                      >
+                        <div className="min-h-0 flex-1 rounded-2xl bg-white border border-slate-200 p-3 flex flex-col">
+                          <div className="flex items-center justify-between gap-2 border-b border-slate-200 pb-2">
+                            <div>
+                              <div className="text-[9px] font-mono font-bold text-amber-700 uppercase tracking-widest">DAILY BONUS</div>
+                              <h3 className="text-xs font-display font-black text-slate-900">
+                                {scholarProgress.streak}-day login streak
+                              </h3>
+                            </div>
+                            <button
+                              type="button"
+                              disabled={!isLoggedIn || hasClaimedDailyReward(rewardAccountId)}
+                              onClick={() => void handleClaimDailyReward()}
+                              className="px-3 py-2 rounded-xl bg-yellow-400 hover:bg-yellow-300 disabled:bg-slate-200 disabled:text-slate-500 text-slate-950 text-[10px] font-display font-black shrink-0 cursor-pointer disabled:cursor-not-allowed"
+                            >
+                              {hasClaimedDailyReward(rewardAccountId)
+                                ? 'Claimed Today'
+                                : `Claim +${25 + Math.min(Math.max(0, scholarProgress.streak - 1), 14) * 5} XP`}
+                            </button>
+                          </div>
+                          <p className="pt-2 text-[10px] text-slate-500">
+                            Daily rewards grow with your streak. Today's bonus is {25 + Math.min(Math.max(0, scholarProgress.streak - 1), 14) * 5} XP.
                           </p>
                         </div>
-                        <span className="px-2.5 py-1 rounded-xl bg-slate-900 text-yellow-300 font-mono font-bold text-[10px] shrink-0">
-                          {onlinePlayers.length} ONLINE
-                        </span>
-                      </div>
 
-                      {/* Add Friend Input (Secondary Action Button) */}
-                      <form onSubmit={handleAddFriendSubmit} className="flex items-center gap-1.5">
-                        <input
-                          type="text"
-                          value={newFriendInput}
-                          onChange={(e) => setNewFriendInput(e.target.value)}
-                          placeholder="Add classmate friend (@username)..."
-                          className="flex-1 px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs text-slate-900 focus:outline-none focus:border-amber-500"
-                        />
-                        <button
-                          type="submit"
-                          className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-display font-extrabold text-xs flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
-                        >
-                          <UserPlus className="w-3.5 h-3.5 text-yellow-400" />
-                          <span>Add</span>
-                        </button>
-                      </form>
-
-                      {friendToast && (
-                        <div className="px-3 py-1.5 rounded-xl bg-amber-100 border border-amber-300 text-[11px] font-bold text-amber-900">
-                          {friendToast}
-                        </div>
-                      )}
-
-                      {/* Friends & Live Online Players List */}
-                      <div className="space-y-2 max-h-48 overflow-y-auto drawer-scroll pr-1">
-                        {combinedFriends.length === 0 ? (
-                          <div className="p-3.5 rounded-2xl bg-white border border-dashed border-slate-300 text-center space-y-1">
-                            <div className="text-xs font-display font-bold text-slate-800">
-                              No Other Players Connected Yet
-                            </div>
-                            <p className="text-[11px] text-slate-500">
-                              Open the app in a second tab or share your party link below to see real online players appear here automatically, or add a friend by username above.
-                            </p>
+                        <div className="min-h-0 flex-1 rounded-2xl bg-white border border-slate-200 p-3 flex flex-col">
+                          <div className="flex items-center gap-1.5 border-b border-slate-200 pb-2">
+                            <Trophy className="w-3.5 h-3.5 text-amber-600" />
+                            <h3 className="text-xs font-display font-black text-slate-900">Achievements</h3>
                           </div>
-                        ) : (
-                          combinedFriends.map((friend) => (
-                            <div
-                              key={friend.id}
-                              className="p-2.5 rounded-2xl bg-white border border-slate-200 flex items-center justify-between gap-2"
-                            >
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                <div className="w-8 h-8 rounded-full bg-slate-900 text-yellow-300 font-display font-black text-xs flex items-center justify-center shrink-0">
-                                  {friend.name[0]?.toUpperCase()}
-                                </div>
+                          <div className="min-h-0 flex-1 overflow-y-auto drawer-scroll pt-2 space-y-2">
+                            {achievements.map((achievement) => (
+                              <div key={achievement.id} className="p-2 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-2">
                                 <div className="min-w-0">
-                                  <div className="text-xs font-display font-black text-slate-900 truncate">
-                                    @{friend.name}{' '}
-                                    <span className="text-[10px] font-mono text-amber-700">
-                                      · {friend.block}
-                                    </span>
+                                  <div className="text-[11px] font-display font-black text-slate-900 flex items-center gap-1">
+                                    <Trophy className="w-3 h-3 text-amber-500 shrink-0" />
+                                    <span className="truncate">{achievement.title}</span>
                                   </div>
-                                  <div className="text-[10px] font-mono text-slate-500 truncate">
-                                    {friend.status}
-                                  </div>
+                                  <div className="text-[9px] text-slate-500">{achievement.description}</div>
+                                  <div className="text-[9px] font-mono text-amber-700">Reward: {achievement.rewardXp} XP</div>
                                 </div>
+                                <button
+                                  type="button"
+                                  disabled={!isLoggedIn || !achievement.isUnlocked || achievement.isClaimed}
+                                  onClick={() => void handleClaimAchievement(achievement.id)}
+                                  className="px-2.5 py-1.5 rounded-lg bg-slate-900 text-yellow-300 disabled:bg-slate-100 disabled:text-slate-400 text-[9px] font-display font-black shrink-0 cursor-pointer disabled:cursor-not-allowed"
+                                >
+                                  {achievement.isClaimed ? 'Claimed' : achievement.isUnlocked ? 'Claim' : 'Locked'}
+                                </button>
                               </div>
-
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  onSendInviteUsername(friend.name, selectedMode);
-                                  setFriendToast(`Sent live battle invite to @${friend.name}!`);
-                                  setTimeout(() => setFriendToast(null), 2200);
-                                }}
-                                className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-900 text-slate-800 hover:text-yellow-300 border border-slate-200 font-display font-extrabold text-[11px] shrink-0 transition-colors cursor-pointer"
-                              >
-                                Invite
-                              </button>
-                            </div>
-                          ))
-                        )}
-                      </div>
-
-                      {/* Socials & Connected Study Profiles */}
-                      <div className="pt-2.5 border-t border-slate-200 space-y-2.5">
-                        <div className="text-[10px] font-mono font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
-                          <Globe className="w-3.5 h-3.5 text-amber-600" />
-                          <span>Connected Study Socials</span>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="p-2.5 rounded-xl bg-white border border-slate-200 flex items-center gap-2">
-                            <MessageCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                            <div className="min-w-0">
-                              <div className="text-[9px] font-mono text-slate-400 uppercase">Discord</div>
-                              <div className="text-[11px] font-bold text-slate-800 truncate">
-                                @{isLoggedIn ? studentName : 'guest'}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="p-2.5 rounded-xl bg-white border border-slate-200 flex items-center gap-2">
-                            <BookOpen className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                            <div className="min-w-0">
-                              <div className="text-[9px] font-mono text-slate-400 uppercase">Canvas LMS</div>
-                              <div className="text-[11px] font-bold text-slate-800 truncate">
-                                {isLoggedIn ? blockSection : 'BSCS-3A'}
-                              </div>
-                            </div>
+                            ))}
                           </div>
                         </div>
-
-                        {/* Single Primary CTA in Friends & Socials Section */}
-                        <button
-                          type="button"
-                          onClick={() => handleCopyText(roomInviteUrl, 'social')}
-                          className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500 hover:from-yellow-200 hover:to-amber-400 text-slate-950 font-display font-black text-xs flex items-center justify-center gap-1.5 shadow-sm hover:-translate-y-0.5 transition-all cursor-pointer"
-                        >
-                          {copiedKey === 'social' ? <Check className="w-3.5 h-3.5" /> : <Share2 className="w-3.5 h-3.5" />}
-                          <span>
-                            {copiedKey === 'social'
-                              ? 'Copied Party Invite Link!'
-                              : `Copy Party Invite Link (Room #${roomCode})`}
-                          </span>
-                        </button>
-                      </div>
-                    </section>
-
-                    {/* SECTION 04: SCHOLAR COMBAT RECORD */}
-                    <section className="rounded-3xl bg-slate-50 border border-slate-200 p-4 sm:p-5 space-y-3">
-                      <div className="border-b border-slate-200 pb-2">
-                        <div className="text-[10px] font-mono font-bold text-amber-700 uppercase tracking-widest">
-                          SECTION 04 · CAREER RECORD
-                        </div>
-                        <h3 className="text-sm font-display font-black text-slate-900 mt-0.5">
-                          Total Scholar Activity
-                        </h3>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2.5 text-xs">
-                        <div className="p-2.5 rounded-xl bg-white border border-slate-200">
-                          <div className="text-[10px] font-mono text-slate-500">Arena Battles Won</div>
-                          <div className="text-sm font-display font-black text-slate-900 tabular-nums mt-0.5">
-                            48 Wins
-                          </div>
-                        </div>
-                        <div className="p-2.5 rounded-xl bg-white border border-slate-200">
-                          <div className="text-[10px] font-mono text-slate-500">Questions Mastered</div>
-                          <div className="text-sm font-display font-black text-slate-900 tabular-nums mt-0.5">
-                            642 Qs
-                          </div>
-                        </div>
-                        <div className="p-2.5 rounded-xl bg-white border border-slate-200">
-                          <div className="text-[10px] font-mono text-slate-500">Active Study Topic</div>
-                          <div className="text-xs font-display font-bold text-amber-700 truncate mt-0.5">
-                            {activeDeck.title}
-                          </div>
-                        </div>
-                        <div className="p-2.5 rounded-xl bg-white border border-slate-200">
-                          <div className="text-[10px] font-mono text-slate-500">Total Scholar XP</div>
-                          <div className="text-sm font-display font-black text-slate-900 tabular-nums mt-0.5">
-                            {scholarProgress.totalXp.toLocaleString()} XP
-                          </div>
-                        </div>
-                      </div>
-                    </section>
+                      </section>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -2328,7 +2620,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                 </div>
 
                 {/* Chat Messages Scroll Area */}
-                <div className="flex-1 p-4 overflow-y-auto drawer-scroll space-y-2.5 bg-slate-50/50">
+                <div className="flex-1 min-h-0 p-4 overflow-y-auto overscroll-contain drawer-scroll space-y-2.5 bg-slate-50/50">
                   {chatMessages.map((msg) => (
                     <div
                       key={msg.id}
@@ -2338,7 +2630,19 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                         <span className="font-display font-extrabold text-amber-700 text-xs">
                           @{msg.sender}
                         </span>
-                        <span className="text-[10px] font-mono text-slate-400">{msg.timestamp}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-mono text-slate-400">{msg.timestamp}</span>
+                          {msg.senderId === localPlayerId && (
+                            <button
+                              type="button"
+                              onClick={() => onDeleteChatMessage?.(msg.id)}
+                              aria-label="Delete message"
+                              className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <p className="text-slate-800 text-xs leading-relaxed break-words">{msg.text}</p>
                       {msg.attachment && (
@@ -2366,10 +2670,10 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                 {/* Pop-Up Chat Input Form */}
                 <form
                   onSubmit={handleSendChatSubmit}
-                  className="px-4 pb-3.5 pt-2 border-t border-slate-200 bg-white shrink-0"
+                  className="relative px-4 pb-3.5 pt-2 border-t border-slate-200 bg-white shrink-0"
                 >
                   {activeAttachMenu === 'link' && (
-                    <div className="mb-2 flex items-center gap-2">
+                    <div data-attachment-control className="mb-2 flex items-center gap-2">
                       <input
                         type="text"
                         value={attachUrlInput}
@@ -2386,15 +2690,42 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                       </button>
                     </div>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => setBattleModeDrawerOpen(true)}
-                    className="mb-2 h-9 w-full rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-yellow-300 text-[11px] font-display font-black flex items-center justify-center gap-2 transition-colors cursor-pointer"
-                  >
-                    <Swords className="w-4 h-4" />
-                    PVP / BATTLE CHALLENGE
-                  </button>
-                  <div className="mb-2 grid grid-cols-5 gap-1.5 w-full">
+                  {pendingAttachment && (
+                    <div className="mb-2 px-2.5 py-2 rounded-xl bg-amber-50 border border-amber-200 flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-amber-700 shrink-0" />
+                      <div className="min-w-0 flex-1 truncate text-xs font-bold text-slate-800">{pendingAttachment.title}</div>
+                      <button
+                        type="button"
+                        onClick={() => setPendingAttachment(null)}
+                        aria-label="Remove attachment"
+                        className="w-7 h-7 rounded-lg hover:bg-amber-100 grid place-items-center cursor-pointer"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+                  {attachmentError && <p role="alert" className="mb-2 text-[10px] text-rose-600">{attachmentError}</p>}
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setBattleModeDrawerOpen(true)}
+                      aria-label="Open battle challenge"
+                      className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-amber-300 bg-yellow-400 text-slate-950 hover:bg-yellow-300 cursor-pointer"
+                    >
+                      <Swords className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveAttachMenu((current) => current === 'menu' ? null : 'menu')}
+                      aria-label="Add attachment"
+                      aria-expanded={activeAttachMenu === 'menu'}
+                      data-attachment-control
+                      className="w-9 h-9 rounded-full bg-slate-100 hover:bg-amber-100 border border-slate-300 grid place-items-center text-slate-800 cursor-pointer shrink-0"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                    {activeAttachMenu === 'menu' && (
+                      <div data-attachment-control className="absolute z-30 bottom-16 left-4 p-2 rounded-xl bg-white shadow-xl border border-slate-200 grid grid-cols-2 gap-1.5 min-w-[180px]">
                     {[
                       { type: 'photo' as const, label: 'Photo', icon: ImageIcon, color: 'text-yellow-600' },
                       { type: 'video' as const, label: 'Video', icon: Film, color: 'text-amber-600' },
@@ -2406,26 +2737,35 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                         key={type}
                         type="button"
                         onClick={() => handleQuickShareAttachment(type)}
-                        className="h-9 min-w-0 px-1.5 rounded-lg bg-white hover:bg-amber-50 border border-slate-300 hover:border-amber-400 text-slate-700 text-[11px] font-display font-bold flex items-center justify-center gap-1.5 w-full transition-colors cursor-pointer"
+                        className="h-9 min-w-0 px-2 rounded-lg bg-white hover:bg-amber-50 text-slate-700 text-[11px] font-display font-bold flex items-center gap-1.5 w-full transition-colors cursor-pointer"
                         title={`Share ${label}`}
                       >
                         <Icon className={`w-3.5 h-3.5 ${color}`} />
                         <span>{label}</span>
                       </button>
                     ))}
-                  </div>
-                  <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleQuickShareStudyDeck}
+                          className="h-9 min-w-0 px-2 rounded-lg bg-white hover:bg-amber-50 text-slate-700 text-[11px] font-display font-bold flex items-center gap-1.5 w-full transition-colors cursor-pointer"
+                        >
+                          <BookOpen className="w-3.5 h-3.5 text-amber-700" />
+                          <span>Study Deck</span>
+                        </button>
+                      </div>
+                    )}
                     <input
                       type="text"
                       data-testid="popup-chat-input"
                       value={chatInput}
                       onChange={(e) => setChatInput(e.target.value)}
                       placeholder="Type a message to the room..."
-                      className="flex-1 px-3.5 py-2 rounded-full bg-slate-100 border border-slate-300 text-xs text-slate-900 focus:outline-none focus:border-amber-500"
+                      className="flex-1 min-w-0 px-3.5 py-2 rounded-full bg-slate-100 border border-slate-300 text-xs text-slate-900 focus:outline-none focus:border-amber-500"
                     />
                     <button
                       type="submit"
                       data-testid="popup-chat-send-btn"
+                      disabled={!chatInput.trim() && !pendingAttachment}
                       className="px-4 py-2 rounded-full bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500 hover:from-yellow-200 hover:to-amber-400 text-slate-950 font-display font-black text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
                     >
                       <Send className="w-3.5 h-3.5" />
@@ -2463,8 +2803,8 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
               <div className="flex items-center gap-2 shrink-0">
                 {expandedAttachment.type === 'notes' ? (
                   <a
-                    href={`data:text/plain;charset=utf-8,${encodeURIComponent(`${expandedAttachment.title}\n${expandedAttachment.subtitle || ''}`)}`}
-                    download={`${expandedAttachment.title.replace(/[^a-z0-9]+/gi, '-') || 'study-notes'}.txt`}
+                    href={expandedAttachment.url || `data:text/plain;charset=utf-8,${encodeURIComponent(`${expandedAttachment.title}\n${expandedAttachment.subtitle || ''}`)}`}
+                    download={expandedAttachment.title.toLowerCase().endsWith('.txt') ? expandedAttachment.title : `${expandedAttachment.title.replace(/[^a-z0-9]+/gi, '-') || 'study-notes'}.txt`}
                     className="h-9 px-3 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-bold text-xs flex items-center gap-2 transition-colors"
                   >
                     <Download className="w-4 h-4" />

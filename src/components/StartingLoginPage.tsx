@@ -189,6 +189,7 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
   useEffect(() => {
     let rafId = 0;
     let lastTime = performance.now();
+    let lastRenderTime = 0;
     const total = GAME_PREVIEWS.length;
     // Balanced speed: noticeable continuous movement without frame jumps.
     const orbitSpeed = 0.12;
@@ -217,7 +218,10 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
         phaseRef.current = (((phaseRef.current - dt * orbitSpeed) % total) + total) % total;
       }
 
-      setOrbitPhase(phaseRef.current);
+      if (now - lastRenderTime >= 1000 / 30) {
+        setOrbitPhase(phaseRef.current);
+        lastRenderTime = now;
+      }
 
       rafId = window.requestAnimationFrame(tick);
     };
@@ -315,7 +319,7 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
   return (
     <div
       data-testid="starting-login-page"
-      className="fixed inset-0 z-30 flex items-center justify-center overflow-y-auto lg:overflow-hidden bg-slate-950/35"
+      className="fixed inset-0 z-30 flex items-center justify-center overflow-x-hidden overflow-y-auto bg-slate-950/35 lg:overflow-y-hidden"
       style={{
         backgroundImage: `url("${import.meta.env.BASE_URL}assets/login-background.jpg")`,
         backgroundSize: 'cover',
@@ -341,7 +345,7 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
         <section
           data-testid="starting-login-card"
           aria-label="Scholar Login and Registration"
-          className="relative z-20 justify-self-start w-full max-w-[460px] lg:w-[460px] xl:w-[475px] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[28px] bg-white/95 text-slate-900 border border-slate-200/90 shadow-[0_24px_64px_rgba(15,23,42,0.5)] p-5 sm:p-6 flex flex-col gap-3 shrink-0 lg:-translate-x-8 xl:-translate-x-12"
+          className="relative z-20 justify-self-start w-full max-w-[460px] lg:w-full xl:w-[460px] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[28px] bg-white/95 text-slate-900 border border-slate-200/90 shadow-[0_24px_64px_rgba(15,23,42,0.5)] p-5 sm:p-6 flex flex-col gap-3 shrink-0 lg:-translate-x-8 xl:-translate-x-12"
         >
           {/* Brand Logo Lockup */}
           <div className="flex flex-col items-center text-center pb-4 border-b border-slate-200/80">
@@ -523,28 +527,34 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
         <section
           data-testid="circular-game-preview"
           aria-label="Game Preview Carousel"
-          className="relative z-20 w-full h-[640px] lg:h-full flex items-center justify-end select-none overflow-visible lg:pr-0 xl:pr-0"
+          className="relative z-20 w-full h-[640px] lg:h-full flex items-center justify-center select-none overflow-visible"
         >
-          <div className="relative w-full max-w-[680px] h-full flex items-center justify-end lg:translate-x-6 xl:translate-x-10">
+          <div className="relative w-full max-w-[680px] h-full flex items-center justify-center">
             {GAME_PREVIEWS.map((item, index) => {
               const orbit = computeCircularPreviewOrbit(index, GAME_PREVIEWS.length, orbitPhase);
               const { isMiddleMaximized, isVisible } = orbit;
+              const horizontalOffset = Math.round((orbit.x - 44) * 0.5);
 
               return (
-                <div
+                <button
                   key={item.id}
+                  type="button"
                   data-testid={`preview-card-${item.id}`}
                   data-maximized={isMiddleMaximized ? 'true' : 'false'}
+                  aria-label={`Focus preview: ${item.title}`}
+                  aria-pressed={isMiddleMaximized}
                   onClick={() => handlePressPreviewCard(index)}
                   style={{
-                    transform: `translate3d(${orbit.x}px, ${orbit.y}px, 0px) scale(${orbit.scale})`,
+                    left: '50%',
+                    top: '50%',
+                    transform: `translate3d(calc(-50% + ${horizontalOffset}px), calc(-50% + ${orbit.y}px), 0px) scale(${orbit.scale})`,
                     zIndex: orbit.zIndex,
                     opacity: orbit.opacity,
                     visibility: isVisible ? 'visible' : 'hidden',
                     pointerEvents: isVisible ? 'auto' : 'none',
                   }}
-                  title={`Click anywhere on this card to maximize ${item.title}`}
-                  className={`group/preview absolute w-[330px] sm:w-[500px] lg:w-[620px] xl:w-[680px] h-[220px] sm:h-[295px] lg:h-[360px] xl:h-[390px] rounded-3xl bg-white/95 hover:bg-gradient-to-br hover:from-amber-50/95 hover:via-white hover:to-yellow-50/90 text-slate-900 p-4 border-2 cursor-pointer overflow-hidden will-change-transform transition-[border-color,box-shadow,background-color] duration-300 ${
+                  title={`Focus ${item.title}`}
+                  className={`group/preview absolute w-[min(330px,calc(100vw-2.5rem))] sm:w-[min(480px,calc(100vw-8rem))] lg:w-[min(560px,calc(50vw-8rem))] h-[220px] sm:h-[295px] lg:h-[300px] xl:h-[360px] rounded-3xl bg-white/95 p-4 text-left text-slate-900 border-2 cursor-pointer overflow-hidden will-change-transform transition-[border-color,box-shadow,background-color] duration-300 hover:bg-gradient-to-br hover:from-amber-50/95 hover:via-white hover:to-yellow-50/90 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-yellow-300 ${
                     isMiddleMaximized
                       ? 'border-yellow-400 ring-4 ring-yellow-400/30 shadow-[0_24px_65px_rgba(0,0,0,0.6)] hover:shadow-[0_24px_68px_rgba(250,204,21,0.45)]'
                       : 'border-slate-200/90 hover:border-yellow-400 hover:ring-4 hover:ring-yellow-400/25 shadow-[0_12px_40px_rgba(0,0,0,0.35)] hover:shadow-[0_20px_48px_rgba(250,204,21,0.38)]'
@@ -591,7 +601,7 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
                       )}
                     </div>
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BATTLE_MODES,
   BattleCombatState,
@@ -11,6 +11,9 @@ import {
   QuizDeck,
   applyBattleTurn,
   createInitialCombatState,
+  isBattleVictoryAtQuestionLimit,
+  normalizeFreeResponse,
+  shuffleQuizDeck,
 } from './game/rules';
 import { CombatVisualEvent, ThreeStage } from './components/ThreeStage';
 import {
@@ -37,6 +40,11 @@ import {
   createScholarProgress,
   syncScholarProgress,
 } from './services/progression';
+import {
+  claimAchievementReward,
+  claimDailyReward as createDailyReward,
+  recordBattleReward,
+} from './services/rewards';
 
 function getOrCreateSessionPlayerId(): string {
   if (typeof window === 'undefined') return 'local-player';
@@ -48,6 +56,24 @@ function getOrCreateSessionPlayerId(): string {
     return created;
   } catch {
     return `player-${Math.random().toString(36).slice(2, 9)}`;
+  }
+}
+
+function loadSavedDecks(accountId: string) {
+  try {
+    const saved = JSON.parse(localStorage.getItem(`eduquests-quiz-decks:${accountId}`) || 'null') as {
+      decks?: QuizDeck[];
+      activeDeckId?: string;
+    } | null;
+    const decks = Array.isArray(saved?.decks) && saved.decks.length > 0
+      ? saved.decks
+      : DEFAULT_QUIZ_DECKS;
+    return {
+      decks,
+      activeDeck: decks.find((deck) => deck.id === saved?.activeDeckId) ?? decks[0],
+    };
+  } catch {
+    return { decks: DEFAULT_QUIZ_DECKS, activeDeck: DEFAULT_QUIZ_DECKS[0] };
   }
 }
 
@@ -76,8 +102,11 @@ export default function App() {
   const [selectedHero, setSelectedHero] = useState<HeroId>('shadow_shinobi');
   const [selectedMode, setSelectedMode] = useState<GameMode>('pvp');
 
-  const [decks, setDecks] = useState<QuizDeck[]>(DEFAULT_QUIZ_DECKS);
-  const [activeDeck, setActiveDeck] = useState<QuizDeck>(DEFAULT_QUIZ_DECKS[0]);
+  const [initialDeckState] = useState(() => loadSavedDecks(progressionAccountId));
+  const [decks, setDecks] = useState<QuizDeck[]>(initialDeckState.decks);
+  const [activeDeck, setActiveDeck] = useState<QuizDeck>(initialDeckState.activeDeck);
+  const [battleDeck, setBattleDeck] = useState<QuizDeck>(initialDeckState.activeDeck);
+  const [deckStorageAccount, setDeckStorageAccount] = useState(progressionAccountId);
 
   // Mandatory Pre-Battle Room/Invite & PDF/Notes Reference tracking
   const [hasCustomNotes, setHasCustomNotes] = useState<boolean>(initialAutostart);
@@ -93,7 +122,12 @@ export default function App() {
   const [characterGender, setCharacterGender] = useState<'male' | 'female' | 'neutral'>('neutral');
   const [outfitStyle, setOutfitStyle] = useState<string>('cozy');
   const [accentColor, setAccentColor] = useState<string>('amber');
+  const [characterStyleReadyFor, setCharacterStyleReadyFor] = useState<string | null>(null);
   const [customizerOpen, setCustomizerOpen] = useState<boolean>(false);
+  const characterAppearance = useMemo(
+    () => ({ gender: characterGender, outfitStyle, accentColor }),
+    [characterGender, outfitStyle, accentColor]
+  );
 
   // Real-time Classmate Invitations & Live Directory
   const [invitations, setInvitations] = useState<BattleInvitation[]>([]);
@@ -149,6 +183,56 @@ export default function App() {
   const [combatEvent, setCombatEvent] = useState<CombatVisualEvent | null>(null);
   const [liveToast, setLiveToast] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (deckStorageAccount === progressionAccountId) return;
+    const saved = loadSavedDecks(progressionAccountId);
+    setDecks(saved.decks);
+    setActiveDeck(saved.activeDeck);
+    setBattleDeck(saved.activeDeck);
+    setDeckStorageAccount(progressionAccountId);
+  }, [progressionAccountId, deckStorageAccount]);
+
+  useEffect(() => {
+    if (deckStorageAccount !== progressionAccountId) return;
+    try {
+      localStorage.setItem(`eduquests-quiz-decks:${progressionAccountId}`, JSON.stringify({
+        decks,
+        activeDeckId: activeDeck.id,
+      }));
+    } catch {
+      setLiveToast('Could not save your quiz decks in this browser.');
+    }
+  }, [progressionAccountId, deckStorageAccount, decks, activeDeck]);
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(`eduquests-character-style:${progressionAccountId}`) || 'null') as {
+        gender?: 'male' | 'female' | 'neutral';
+        outfitStyle?: string;
+        accentColor?: string;
+      } | null;
+      if (saved?.gender) setCharacterGender(saved.gender);
+      if (saved?.outfitStyle) setOutfitStyle(saved.outfitStyle);
+      if (saved?.accentColor) setAccentColor(saved.accentColor);
+    } catch {
+      setLiveToast('Could not load saved character appearance.');
+    }
+    setCharacterStyleReadyFor(progressionAccountId);
+  }, [progressionAccountId]);
+
+  useEffect(() => {
+    if (characterStyleReadyFor !== progressionAccountId) return;
+    try {
+      localStorage.setItem(`eduquests-character-style:${progressionAccountId}`, JSON.stringify({
+        gender: characterGender,
+        outfitStyle,
+        accentColor,
+      }));
+    } catch {
+      setLiveToast('Could not save character appearance in this browser.');
+    }
+  }, [progressionAccountId, characterStyleReadyFor, characterGender, outfitStyle, accentColor]);
+
   const [lastFeedback, setLastFeedback] = useState<{
     isCorrect: boolean;
     damageDealt: number;
@@ -156,6 +240,8 @@ export default function App() {
     explanation: string;
     selectedIndex: number;
     correctIndex: number;
+    selectedAnswer?: string;
+    correctAnswer?: string;
     blockedByPlayer?: boolean;
   } | null>(null);
 
@@ -164,6 +250,8 @@ export default function App() {
     score: number;
     bestScore: number;
     accuracyPct: number;
+    questionsAnswered: number;
+    totalQuestions: number;
     clearTimeSec: number;
     totalDamage: number;
     bossHpRemaining: number;
@@ -172,6 +260,7 @@ export default function App() {
 
   const questionStartRef = useRef<number>(performance.now());
   const battleStartRef = useRef<number>(performance.now());
+  const gameFinalizedRef = useRef(false);
   const wsRef = useRef<WebSocket | null>(null);
   const bestScoreRef = useRef<number>(1420);
 
@@ -372,12 +461,21 @@ export default function App() {
   }, [studentName, blockSection, selectedHero, localPlayerId, buildLocalMember]);
 
   const launchActualBattle = useCallback(
-    (modeOverride?: GameMode, heroOverride?: HeroId, durationOverride?: number) => {
+    (
+      modeOverride?: GameMode,
+      heroOverride?: HeroId,
+      durationOverride?: number,
+      deckOverride?: QuizDeck
+    ) => {
       const targetMode = modeOverride ?? selectedMode;
       const targetHero = heroOverride ?? selectedHero;
+      const targetDeck = deckOverride ?? activeDeck;
       const spec = BATTLE_MODES[targetMode];
 
       soundFX.playClick();
+      const shuffledDeck = shuffleQuizDeck(targetDeck);
+      setBattleDeck(shuffledDeck);
+      gameFinalizedRef.current = false;
       setCombat(createInitialCombatState(targetMode, targetHero));
       setQuestionIndex(0);
       setTimeRemainingSec(
@@ -395,7 +493,12 @@ export default function App() {
       document.body.dataset.state = 'playing';
       setShellState('playing');
     },
-    [selectedMode, selectedHero, battleDurationSec]
+    [selectedMode, selectedHero, battleDurationSec, activeDeck]
+  );
+
+  const restartCurrentBattle = useCallback(
+    () => launchActualBattle(selectedMode, undefined, battleDurationSec, battleDeck),
+    [launchActualBattle, selectedMode, battleDurationSec, battleDeck]
   );
 
   // Enforce mandatory pre-battle Room/Invite + PDF/notes reference before fighting in any mode
@@ -420,6 +523,8 @@ export default function App() {
 
   const finalizeGameOver = useCallback(
     (finalState: BattleCombatState, isVictory: boolean) => {
+      if (gameFinalizedRef.current) return;
+      gameFinalizedRef.current = true;
       const elapsedSec = Math.max(
         1,
         Math.round((performance.now() - battleStartRef.current) / 1000)
@@ -430,15 +535,29 @@ export default function App() {
           : 0;
       const runScore = finalState.totalDamageDealt * 2 + finalState.correctCount * 150;
       bestScoreRef.current = Math.max(bestScoreRef.current, runScore);
-      void syncScholarProgress(progressionAccountId, isVictory ? 100 : 25, true)
+      if (finalState.answeredCount > 0) {
+        void recordBattleReward(progressionAccountId, {
+          isVictory,
+          isPerfect: finalState.correctCount === finalState.answeredCount,
+        }).catch((error: unknown) => {
+          showToast(error instanceof Error ? error.message : 'Unable to save achievement progress.');
+        });
+      }
+      const completionXp = finalState.answeredCount === 0 ? 0 : isVictory ? 100 : 25;
+      void syncScholarProgress(progressionAccountId, completionXp, true)
         .then(setScholarProgress)
         .catch(() => {});
+      if (completionXp > 0) {
+        showToast(`${isVictory ? 'Battle victory' : 'Battle complete'} · +${completionXp} XP`);
+      }
 
       setRunSnapshot({
         mode: finalState.mode,
         score: runScore,
         bestScore: bestScoreRef.current,
         accuracyPct,
+        questionsAnswered: finalState.answeredCount,
+        totalQuestions: battleDeck.questions.length,
         clearTimeSec: elapsedSec,
         totalDamage: finalState.totalDamageDealt,
         bossHpRemaining: finalState.enemyHp,
@@ -448,7 +567,7 @@ export default function App() {
       document.body.dataset.state = 'gameover';
       setShellState('gameover');
     },
-    [progressionAccountId]
+    [progressionAccountId, showToast, battleDeck.questions.length]
   );
 
   // Countdown timer during active battle (for Raid, PvP, Team modes)
@@ -471,18 +590,26 @@ export default function App() {
   }, [shellState, combat, finalizeGameOver]);
 
   const currentQuestion =
-    activeDeck.questions[questionIndex % activeDeck.questions.length] ??
+    battleDeck.questions[questionIndex] ??
+    battleDeck.questions[0] ??
     activeDeck.questions[0];
 
   const handleAnswerQuestion = useCallback(
-    (optionIndex: number) => {
+    (answer: number | string) => {
       if (shellState !== 'playing' || lastFeedback) return;
 
       const timeTakenSec = Math.max(
         0.8,
         (performance.now() - questionStartRef.current) / 1000
       );
-      const isCorrect = optionIndex === currentQuestion.correctIndex;
+      const isFreeResponse = currentQuestion.questionType === 'identification' ||
+        currentQuestion.questionType === 'fill_in_blank';
+      const correctAnswer = currentQuestion.correctAnswer ??
+        currentQuestion.options[currentQuestion.correctIndex] ?? '';
+      const isCorrect = typeof answer === 'number'
+        ? answer === currentQuestion.correctIndex
+        : isFreeResponse && normalizeFreeResponse(answer) === normalizeFreeResponse(correctAnswer);
+      const selectedIndex = typeof answer === 'number' ? answer : -1;
 
       const { nextState, result, shieldUsedByPlayer } = applyBattleTurn(combat, {
         isCorrect,
@@ -532,14 +659,20 @@ export default function App() {
         damageDealt: result.totalDamage,
         counterDamage: result.enemyCounterDamage,
         explanation: currentQuestion.explanation,
-        selectedIndex: optionIndex,
+        selectedIndex,
         correctIndex: currentQuestion.correctIndex,
+        selectedAnswer: typeof answer === 'string' ? answer.trim() : undefined,
+        correctAnswer,
         blockedByPlayer: shieldUsedByPlayer,
       });
 
       if (nextState.status === 'victory' || nextState.status === 'defeat') {
         setTimeout(() => {
           finalizeGameOver(nextState, nextState.status === 'victory');
+        }, 550);
+      } else if (questionIndex + 1 >= battleDeck.questions.length) {
+        setTimeout(() => {
+          finalizeGameOver(nextState, isBattleVictoryAtQuestionLimit(nextState));
         }, 550);
       }
     },
@@ -556,16 +689,22 @@ export default function App() {
       showToast,
       finalizeGameOver,
       progressionAccountId,
+      questionIndex,
+      battleDeck.questions.length,
     ]
   );
 
   const handleNextQuestion = useCallback(() => {
     if (!lastFeedback) return;
     soundFX.playClick();
+    if (questionIndex + 1 >= battleDeck.questions.length) {
+      finalizeGameOver(combat, isBattleVictoryAtQuestionLimit(combat));
+      return;
+    }
     setLastFeedback(null);
-    setQuestionIndex((prev) => (prev + 1) % activeDeck.questions.length);
+    setQuestionIndex((prev) => prev + 1);
     questionStartRef.current = performance.now();
-  }, [lastFeedback, activeDeck.questions.length]);
+  }, [lastFeedback, questionIndex, battleDeck.questions.length, combat, finalizeGameOver]);
 
   const handleTriggerChargedMove = useCallback(
     (moveName: string) => {
@@ -620,7 +759,7 @@ export default function App() {
         return;
       }
 
-      if (aiModalOpen || roomModalOpen) {
+      if (aiModalOpen || roomModalOpen || battleSetupOpen) {
         if (e.key === 'Escape') {
           setAiModalOpen(false);
           setStartBattleAfterNotes(false);
@@ -638,7 +777,12 @@ export default function App() {
         if (!hasEnteredLobby) return;
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          handleRequestStartBattle();
+          if (selectedMode === 'training' || isJoinedInRoom) {
+            setBattleSetupOpen(true);
+          } else {
+            setRoomJoinError(null);
+            setRoomModalOpen(true);
+          }
         }
       } else if (shellState === 'playing') {
         if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') {
@@ -647,7 +791,7 @@ export default function App() {
           setShellState('paused');
         } else if (e.key === 'r' || e.key === 'R') {
           e.preventDefault();
-          launchActualBattle();
+          restartCurrentBattle();
         } else if (e.key === ' ' && combat.energy >= 100 && !lastFeedback) {
           e.preventDefault();
           const hero = HEROES.find((h) => h.id === selectedHero) ?? HEROES[0];
@@ -668,7 +812,7 @@ export default function App() {
       } else if (shellState === 'gameover') {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          launchActualBattle();
+          restartCurrentBattle();
         }
       }
     };
@@ -678,14 +822,16 @@ export default function App() {
   }, [
     aiModalOpen,
     roomModalOpen,
+    battleSetupOpen,
     shellState,
     hasEnteredLobby,
+    selectedMode,
+    isJoinedInRoom,
     combat.energy,
     lastFeedback,
     selectedHero,
     handleToggleMute,
-    handleRequestStartBattle,
-    launchActualBattle,
+    restartCurrentBattle,
     handleTriggerChargedMove,
     handleNextQuestion,
     handleAnswerQuestion,
@@ -739,6 +885,40 @@ export default function App() {
     setScholarProgress(createScholarProgress());
     setIsLoggedIn(false);
     setHasEnteredLobby(false);
+  };
+
+  const handleClaimDailyReward = async () => {
+    try {
+      const reward = await createDailyReward(progressionAccountId, scholarProgress.streak);
+      const updated = await syncScholarProgress(
+        progressionAccountId,
+        reward.accountSynced ? 0 : reward.xp,
+        !reward.accountSynced
+      );
+      setScholarProgress(updated);
+      showToast(`Daily reward claimed: +${reward.xp} XP!`);
+      return true;
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Unable to claim daily reward.');
+      return false;
+    }
+  };
+
+  const handleClaimAchievement = async (achievementId: string) => {
+    try {
+      const reward = await claimAchievementReward(progressionAccountId, achievementId, scholarProgress);
+      const updated = await syncScholarProgress(
+        progressionAccountId,
+        reward.accountSynced ? 0 : reward.xp,
+        !reward.accountSynced
+      );
+      setScholarProgress(updated);
+      showToast(`Achievement reward claimed: +${reward.xp} XP!`);
+      return true;
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Unable to claim achievement reward.');
+      return false;
+    }
   };
 
   const handleCreateRoom = useCallback(
@@ -853,6 +1033,13 @@ export default function App() {
     [isJoinedInRoom, roomCode, localPlayerId, studentName]
   );
 
+  const handleDeleteChatMessage = useCallback((messageId: string) => {
+    setChatMessages((current) => current.filter((message) => message.id !== messageId));
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'chat:delete', roomCode, messageId }));
+    }
+  }, [roomCode]);
+
   const handleSendInviteUsername = useCallback(
     (username: string, mode: GameMode) => {
       soundFX.playClick();
@@ -957,7 +1144,7 @@ export default function App() {
     showToast(`Saved to Inventory & Loaded Topic: ${newDeck.title}`);
 
     if (shouldStartBattle) {
-      launchActualBattle(undefined, undefined, durationSec);
+      launchActualBattle(undefined, undefined, durationSec, newDeck);
     }
   };
 
@@ -968,6 +1155,7 @@ export default function App() {
         shellState={shellState}
         mode={selectedMode}
         selectedHero={selectedHero}
+        appearance={characterAppearance}
         combatEvent={combatEvent}
         classmates={isJoinedInRoom ? classmates : []}
         localPlayerId={localPlayerId}
@@ -1020,6 +1208,7 @@ export default function App() {
           onlinePlayers={onlinePlayers}
           chatMessages={chatMessages}
           onSendChatMessage={handleSendChatMessage}
+          onDeleteChatMessage={handleDeleteChatMessage}
           invitations={invitations}
           onSendInviteUsername={handleSendInviteUsername}
           onAcceptInvite={handleAcceptInvite}
@@ -1036,6 +1225,9 @@ export default function App() {
           muted={muted}
           onToggleMute={handleToggleMute}
           scholarProgress={scholarProgress}
+          rewardAccountId={progressionAccountId}
+          onClaimDailyReward={handleClaimDailyReward}
+          onClaimAchievementReward={handleClaimAchievement}
         />
       )}
 
@@ -1059,7 +1251,7 @@ export default function App() {
           combat={combat}
           heroId={selectedHero}
           studentName={isLoggedIn ? studentName : 'Guest'}
-          deck={activeDeck}
+          deck={battleDeck}
           currentQuestion={currentQuestion}
           questionIndex={questionIndex}
           timeRemainingSec={timeRemainingSec}
@@ -1073,7 +1265,7 @@ export default function App() {
             document.body.dataset.state = 'paused';
             setShellState('paused');
           }}
-          onRestart={() => launchActualBattle()}
+          onRestart={restartCurrentBattle}
           onExitToLobby={() => {
             document.body.dataset.state = 'title';
             setShellState('title');
@@ -1110,15 +1302,15 @@ export default function App() {
         }}
         onStartBattle={(durationSec, questionCount) => {
           const cappedCount = Math.min(questionCount, activeDeck.questions.length);
-          setActiveDeck((current) => ({
-            ...current,
-            questions: current.questions.slice(0, cappedCount),
-          }));
+          const selectedDeck = {
+            ...activeDeck,
+            questions: activeDeck.questions.slice(0, cappedCount),
+          };
           setBattleDurationSec(durationSec);
           setHasCustomNotes(true);
           setHasRoomOrInvite(true);
           setBattleSetupOpen(false);
-          launchActualBattle(selectedMode, undefined, durationSec);
+          launchActualBattle(selectedMode, undefined, durationSec, selectedDeck);
         }}
         onClose={() => setBattleSetupOpen(false)}
       />
@@ -1126,6 +1318,7 @@ export default function App() {
       {/* Inventory & PDF/Notes Storage Modal */}
       <InventoryModal
         isOpen={aiModalOpen}
+        accountId={progressionAccountId}
         startBattleAfter={startBattleAfterNotes}
         selectedMode={selectedMode}
         onStartBattle={(durationSec) => {
@@ -1158,7 +1351,7 @@ export default function App() {
           setHasCustomNotes(true);
           setAiModalOpen(false);
           setStartBattleAfterNotes(false);
-          launchActualBattle(undefined, undefined, durationSec);
+          launchActualBattle(undefined, undefined, durationSec, deck);
         }}
         onDeckCreated={handleDeckCreated}
       />
@@ -1176,9 +1369,7 @@ export default function App() {
         onJoinRoomCode={handleJoinRoomCode}
         onCreateRoom={handleCreateRoom}
         availableRooms={availableRooms}
-        onlinePlayers={onlinePlayers}
         classmates={classmates}
-        localPlayerId={localPlayerId}
         joinError={roomJoinError}
         onInvitePlayer={(username) => handleSendInviteUsername(username, selectedMode)}
         activeDeck={activeDeck}
@@ -1194,7 +1385,7 @@ export default function App() {
           document.body.dataset.state = 'playing';
           setShellState('playing');
         }}
-        onRestart={() => launchActualBattle()}
+        onRestart={restartCurrentBattle}
         onReturnToTitle={() => {
           document.body.dataset.state = 'title';
           setShellState('title');

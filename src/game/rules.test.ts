@@ -5,9 +5,14 @@ import {
   createInitialCombatState,
   applyBattleTurn,
   parseNotesIntoFallbackQuestions,
+  shuffleQuizDeck,
   computeCircularPreviewOrbit,
   BATTLE_MODES,
   HEROES,
+  isBattleVictoryAtQuestionLimit,
+  normalizeGeneratedQuizQuestions,
+  normalizeFreeResponse,
+  QUIZ_QUESTION_TYPES,
 } from './rules';
 
 test('calculateQuizDamage rewards fast correct answers and increments energy', () => {
@@ -91,11 +96,123 @@ test('parseNotesIntoFallbackQuestions extracts structured quiz questions from pa
   `;
 
   const questions = parseNotesIntoFallbackQuestions('Cell Division & Organelles', sampleNotes, 10);
-  assert.equal(questions.length, 10);
+  assert.equal(questions.length, 4, 'Parser should not repeat facts to reach the requested count');
+  assert.equal(new Set(questions.map((question) => question.question)).size, questions.length);
   for (const q of questions) {
     assert.equal(q.options.length, 4);
     assert.ok(q.correctIndex >= 0 && q.correctIndex < 4);
     assert.ok(q.options[q.correctIndex].length > 10);
+  }
+});
+
+test('generated question normalization accepts selected types and preserves validated answer keys', () => {
+  const questions = normalizeGeneratedQuizQuestions([
+    {
+      question: 'Which organelle produces most cellular ATP?',
+      questionType: 'multiple_choice',
+      options: ['Ribosome', 'Mitochondrion', 'Golgi body', 'Nucleus'],
+      correctIndex: 1,
+      correctAnswer: 'Mitochondrion',
+      explanation: 'Mitochondria generate most of the cell’s ATP.',
+      conceptTag: 'Cell biology',
+    },
+    {
+      question: 'What molecule carries genetic information?',
+      questionType: 'identification',
+      options: [],
+      correctIndex: -1,
+      correctAnswer: 'DNA',
+      explanation: 'DNA stores hereditary information.',
+      conceptTag: 'Genetics',
+    },
+    {
+      question: 'Mitosis produces four genetically diverse cells.',
+      questionType: 'true_false',
+      options: ['True', 'False'],
+      correctIndex: 1,
+      correctAnswer: 'False',
+      explanation: 'Mitosis normally produces two genetically identical cells.',
+      conceptTag: 'Cell division',
+    },
+    {
+      question: 'The process that forms RNA from DNA is ____.',
+      questionType: 'fill_in_blank',
+      options: [],
+      correctIndex: -1,
+      correctAnswer: 'transcription',
+      explanation: 'Transcription produces RNA using a DNA template.',
+      conceptTag: 'Gene expression',
+    },
+  ], 6, QUIZ_QUESTION_TYPES, 'Advanced');
+
+  assert.equal(questions.length, 4, 'Valid material may produce fewer questions than requested');
+  assert.deepEqual(questions.map((question) => question.questionType), QUIZ_QUESTION_TYPES);
+  assert.equal(questions[0].options[questions[0].correctIndex], 'Mitochondrion');
+  assert.deepEqual(questions[2].options, ['True', 'False']);
+  assert.equal(questions[3].correctAnswer, 'transcription');
+  assert.ok(questions.every((question) => question.difficulty === 'Advanced'));
+});
+
+test('generated question normalization rejects malformed, mismatched, and duplicate questions', () => {
+  assert.throws(() => normalizeGeneratedQuizQuestions([
+    {
+      question: 'A complete but unsupported question?',
+      questionType: 'multiple_choice',
+      options: ['A', 'B', 'C', 'D'],
+      correctIndex: 0,
+      correctAnswer: 'B',
+      explanation: 'The answer does not match the key.',
+    },
+  ], 5, ['multiple_choice'], 'Standard'), /did not return any valid questions/);
+  const duplicateQuestions = normalizeGeneratedQuizQuestions([
+    {
+      question: 'A complete and valid question?',
+      questionType: 'multiple_choice',
+      options: ['A', 'B', 'C', 'D'],
+      correctIndex: 0,
+      correctAnswer: 'A',
+      explanation: 'This is a valid answer.',
+    },
+    {
+      question: 'A complete and valid question?',
+      questionType: 'multiple_choice',
+      options: ['A', 'B', 'C', 'D'],
+      correctIndex: 1,
+      correctAnswer: 'A',
+      explanation: 'Duplicate text should be ignored.',
+    },
+  ], 5, ['multiple_choice'], 'Standard');
+  assert.equal(duplicateQuestions.length, 1);
+});
+
+test('free-response matching ignores case and common punctuation', () => {
+  assert.equal(normalizeFreeResponse('  Mitochondria!  '), normalizeFreeResponse('mitochondria'));
+});
+
+test('shuffleQuizDeck keeps correct answers attached to their options', () => {
+  const deck = {
+    id: 'shuffle-test',
+    title: 'Shuffle',
+    subject: 'Test',
+    sourceSummary: '',
+    createdAt: '',
+    questions: parseNotesIntoFallbackQuestions(
+      'Shuffle',
+      'Alpha: A distinct fact about alpha. Beta: A distinct fact about beta. Gamma: A distinct fact about gamma. Delta: A distinct fact about delta.',
+      4
+    ),
+  };
+  const originalAnswers = new Map(
+    deck.questions.map((question) => [question.id, question.options[question.correctIndex]])
+  );
+  const shuffled = shuffleQuizDeck(deck);
+
+  assert.deepEqual(
+    shuffled.questions.map((question) => question.id).sort(),
+    deck.questions.map((question) => question.id).sort()
+  );
+  for (const question of shuffled.questions) {
+    assert.equal(question.options[question.correctIndex], originalAnswers.get(question.id));
   }
 });
 
@@ -104,6 +221,15 @@ test('all 4 battle modes and 4 heroes have valid stats', () => {
   assert.ok(BATTLE_MODES.raid.enemyCp === 39601);
   assert.ok(BATTLE_MODES.pvp.enemyCp === 1497);
   assert.ok(BATTLE_MODES.training.timeLimitSec === 0);
+});
+
+test('question-limit battle results respect training, raid, and remaining HP', () => {
+  const active = createInitialCombatState('pvp', 'shadow_shinobi');
+  assert.equal(isBattleVictoryAtQuestionLimit({ ...active, playerHp: 80, enemyHp: 60 }), true);
+  assert.equal(isBattleVictoryAtQuestionLimit({ ...active, playerHp: 60, enemyHp: 60 }), false);
+  assert.equal(isBattleVictoryAtQuestionLimit({ ...active, mode: 'raid', playerHp: 100, enemyHp: 1 }), false);
+  assert.equal(isBattleVictoryAtQuestionLimit({ ...active, mode: 'training' }), true);
+  assert.equal(isBattleVictoryAtQuestionLimit({ ...active, status: 'defeat' }), false);
 });
 
 test('computeCircularPreviewOrbit maximizes middle card, shifts right, and hides back wrap-around cards', () => {
@@ -131,4 +257,3 @@ test('computeCircularPreviewOrbit maximizes middle card, shifts right, and hides
   assert.equal(backBottom.opacity, 0);
   assert.equal(backBottom.isVisible, false);
 });
-

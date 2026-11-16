@@ -241,7 +241,7 @@ export const ProfileCharacter3D: React.FC<ProfileCharacter3DProps> = ({
     <div
       ref={mountRef}
       data-testid="profile-3d-character-canvas"
-      className="w-full h-64 sm:h-72 cursor-grab active:cursor-grabbing select-none"
+      className="w-full h-[min(22vh,210px)] min-h-[140px] cursor-grab active:cursor-grabbing select-none"
       title="3D Standing Character (Drag left/right to rotate)"
     />
   );

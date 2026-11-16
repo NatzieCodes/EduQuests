@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   BATTLE_MODES,
   BattleCombatState,
@@ -27,9 +27,11 @@ interface BattleHudProps {
     explanation: string;
     selectedIndex: number;
     correctIndex: number;
+    selectedAnswer?: string;
+    correctAnswer?: string;
     blockedByPlayer?: boolean;
   } | null;
-  onAnswerQuestion: (optionIndex: number) => void;
+  onAnswerQuestion: (answer: number | string) => void;
   onNextQuestion: () => void;
   onTriggerChargedMove: (moveName: string) => void;
   onPause: () => void;
@@ -65,6 +67,13 @@ export const BattleHud: React.FC<BattleHudProps> = ({
 }) => {
   const hero = HEROES.find((h) => h.id === heroId) ?? HEROES[0];
   const modeSpec = BATTLE_MODES[combat.mode];
+  const [textAnswer, setTextAnswer] = useState('');
+  const isFreeResponse = currentQuestion.questionType === 'identification' ||
+    currentQuestion.questionType === 'fill_in_blank';
+
+  useEffect(() => {
+    setTextAnswer('');
+  }, [currentQuestion.id, questionIndex]);
 
   const playerHpPct = Math.max(0, Math.min(100, Math.round((combat.playerHp / combat.playerMaxHp) * 100)));
   const enemyHpPct = Math.max(0, Math.min(100, Math.round((combat.enemyHp / combat.enemyMaxHp) * 100)));
@@ -434,38 +443,65 @@ export const BattleHud: React.FC<BattleHudProps> = ({
             {currentQuestion.question}
           </h2>
 
-          {/* 4 Multiple-Choice Answer Buttons */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {currentQuestion.options.map((opt, idx) => {
-              let btnStyle =
-                'bg-white hover:bg-yellow-50 border-slate-200 text-slate-800 hover:border-yellow-400 shadow-sm';
+          {isFreeResponse ? (
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (!lastFeedback && textAnswer.trim()) onAnswerQuestion(textAnswer);
+              }}
+              className="flex flex-col gap-2 sm:flex-row"
+            >
+              <input
+                type="text"
+                maxLength={500}
+                value={textAnswer}
+                onChange={(event) => setTextAnswer(event.target.value)}
+                disabled={Boolean(lastFeedback)}
+                aria-label="Your answer"
+                placeholder={currentQuestion.questionType === 'fill_in_blank' ? 'Type the missing word or phrase' : 'Type your answer'}
+                className="h-11 min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-amber-400 disabled:bg-slate-50"
+              />
+              <button
+                type="submit"
+                disabled={Boolean(lastFeedback) || !textAnswer.trim()}
+                className="h-11 rounded-xl bg-slate-900 px-5 text-xs font-display font-black text-yellow-300 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Submit Answer
+              </button>
+            </form>
+          ) : (
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {currentQuestion.options.map((opt, idx) => {
+                let btnStyle =
+                  'bg-white hover:bg-yellow-50 border-slate-200 text-slate-800 hover:border-yellow-400 shadow-sm';
 
-              if (lastFeedback) {
-                if (idx === lastFeedback.correctIndex) {
-                  btnStyle = 'bg-emerald-100 border-emerald-500 text-emerald-900 font-bold';
-                } else if (idx === lastFeedback.selectedIndex && !lastFeedback.isCorrect) {
-                  btnStyle = 'bg-rose-100 border-rose-500 text-rose-900';
-                } else {
-                  btnStyle = 'bg-slate-50 border-slate-200 text-slate-400';
+                if (lastFeedback) {
+                  if (idx === lastFeedback.correctIndex) {
+                    btnStyle = 'bg-emerald-100 border-emerald-500 text-emerald-900 font-bold';
+                  } else if (idx === lastFeedback.selectedIndex && !lastFeedback.isCorrect) {
+                    btnStyle = 'bg-rose-100 border-rose-500 text-rose-900';
+                  } else {
+                    btnStyle = 'bg-slate-50 border-slate-200 text-slate-400';
+                  }
                 }
-              }
 
-              return (
-                <button
-                  key={idx}
-                  type="button"
-                  disabled={Boolean(lastFeedback)}
-                  onClick={() => onAnswerQuestion(idx)}
-                  className={`p-2.5 sm:p-3 rounded-xl border text-left text-xs sm:text-sm transition-all flex items-start gap-2.5 ${btnStyle}`}
-                >
-                  <span className="font-mono-num font-bold text-yellow-400 shrink-0">
-                    [{idx + 1}]
-                  </span>
-                  <span className="leading-snug">{opt}</span>
-                </button>
-              );
-            })}
-          </div>
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    disabled={Boolean(lastFeedback)}
+                    onClick={() => onAnswerQuestion(idx)}
+                    className={`flex items-start gap-2.5 rounded-xl border p-2.5 text-left text-xs transition-all sm:p-3 sm:text-sm ${btnStyle}`}
+                  >
+                    <span className="shrink-0 font-mono-num font-bold text-yellow-500">
+                      [{idx + 1}]
+                    </span>
+                    <span className="leading-snug">{opt}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {/* Instant Answer Feedback & Study Explanation Bar */}
           {lastFeedback && (
@@ -485,6 +521,9 @@ export const BattleHud: React.FC<BattleHudProps> = ({
                       : `Missed! Took ${lastFeedback.counterDamage} Counter DMG.`}
                   </span>{' '}
                   <span className="text-slate-600">{lastFeedback.explanation}</span>
+                  {!lastFeedback.isCorrect && lastFeedback.correctAnswer && (
+                    <span className="mt-1 block font-bold text-slate-800">Correct answer: {lastFeedback.correctAnswer}</span>
+                  )}
                 </div>
               </div>
               <button
@@ -492,7 +531,7 @@ export const BattleHud: React.FC<BattleHudProps> = ({
                 onClick={onNextQuestion}
                 className="px-4 py-2 rounded-lg bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-display font-extrabold text-xs whitespace-nowrap shrink-0"
               >
-                Next Question [Enter]
+                {questionIndex + 1 >= deck.questions.length ? 'Finish Battle [Enter]' : 'Next Question [Enter]'}
               </button>
             </div>
           )}
