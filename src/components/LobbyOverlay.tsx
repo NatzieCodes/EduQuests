@@ -1596,7 +1596,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
         >
           <div
             className={`w-full ${
-              authModalMode === 'profile' ? 'max-w-4xl' : 'max-w-md'
+              authModalMode === 'profile' ? 'max-w-6xl' : 'max-w-md'
             } max-h-[90vh] rounded-3xl bg-white text-slate-900 shadow-[0_24px_70px_rgba(0,0,0,0.4)] overflow-hidden flex flex-col`}
           >
             {/* LEVEL 0: Dark Slate Modal Header with Clear Purpose & Segmented Switcher */}
@@ -1607,7 +1607,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                 </div>
                 <h2 id="auth-modal-title" className="text-lg sm:text-xl font-display font-black text-white">
                   {authModalMode === 'profile'
-                    ? `${isLoggedIn ? studentName : 'Guest'} & ${activeHeroObj.name}`
+                    ? `${isLoggedIn ? studentName : 'Guest'}`
                     : authModalMode === 'register'
                     ? 'Register Student Account'
                     : 'Student Account Login'}
@@ -1665,18 +1665,18 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
             </div>
 
             {/* Scrollable Modal Body */}
-            <div className="p-5 sm:p-6 overflow-y-auto drawer-scroll flex-1">
+            <div className="p-4 sm:p-5 overflow-hidden flex-1 min-h-0">
               {authModalMode === 'profile' ? (
                 <div
                   data-testid="student-profile-view"
-                  className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start"
+                  className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-full min-h-0 items-stretch"
                 >
                   {/* =========================================================
                       LEFT COLUMN (7 COLS):
                       Section 01: 3D Full-Body Standing Character & Companion Stage
                       Section 02: Character Customization Directly Underneath
                      ========================================================= */}
-                  <div className="lg:col-span-7 flex flex-col gap-4">
+                  <div className="lg:col-span-5 flex flex-col gap-3 min-h-0">
                     {/* SECTION 01: 3D Standing Character Stage */}
                     <section
                       data-testid="profile-fullbody-character"
@@ -1686,17 +1686,17 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                       <div className="flex items-start justify-between gap-2 z-10">
                         <div>
                           <div className="text-[10px] font-mono font-bold text-amber-800 uppercase tracking-widest">
-                            SECTION 01 · 3D STANDING CHARACTER (DRAG TO ROTATE)
+                            YOUR CHARACTER · DRAG TO ROTATE
                           </div>
                           <div className="text-xl font-display font-black text-slate-900 leading-tight mt-0.5">
                             {isLoggedIn ? `@${studentName}` : 'GuestScholar'}
                           </div>
                           <div className="text-xs font-display font-bold text-slate-600">
-                            Standing with Otter Companion &amp; {activeHeroObj.name}
+                            Your scholar avatar
                           </div>
                         </div>
                         <span className="px-3 py-1 rounded-xl bg-slate-900 text-yellow-300 font-mono font-bold text-xs shadow-2xs tabular-nums">
-                          {isLoggedIn ? blockSection : 'GUEST'} · CP {activeHeroObj.cp}
+                          {isLoggedIn ? blockSection : 'GUEST'}
                         </span>
                       </div>
 
@@ -1747,7 +1747,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                       <div className="flex items-start justify-between border-b border-slate-200 pb-2.5">
                         <div>
                           <div className="text-[10px] font-mono font-bold text-amber-700 uppercase tracking-widest">
-                            SECTION 02 · APPEARANCE &amp; LOADOUT
+                            APPEARANCE &amp; LOADOUT
                           </div>
                           <h3 className="text-sm font-display font-black text-slate-900 flex items-center gap-1.5 mt-0.5">
                             <Shirt className="w-4 h-4 text-amber-600" />
@@ -1853,7 +1853,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                                       active ? 'text-yellow-200/80' : 'text-amber-700'
                                     }`}
                                   >
-                                    CP {h.cp}
+                                    
                                   </div>
                                 </button>
                               );
@@ -1896,7 +1896,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                       Section 03: Friends & Live Online Players + Socials
                       Section 04: Scholar Combat Record
                      ========================================================= */}
-                  <div className="lg:col-span-5 flex flex-col gap-4">
+                  <div className="lg:col-span-7 flex flex-col gap-3 min-h-0 overflow-y-auto drawer-scroll pr-1">
                     {/* SECTION 03: FRIENDS & SOCIALS SECTION */}
                     <section
                       data-testid="profile-friends-socials"
@@ -1905,7 +1905,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                       <div className="flex items-start justify-between border-b border-slate-200 pb-2.5">
                         <div>
                           <div className="text-[10px] font-mono font-bold text-amber-700 uppercase tracking-widest">
-                            SECTION 03 · FRIENDS &amp; LIVE PLAYERS
+                            FRIENDS &amp; ONLINE PLAYERS
                           </div>
                           <h3 className="text-sm font-display font-black text-slate-900 flex items-center gap-1.5 mt-0.5">
                             <Users className="w-4 h-4 text-amber-600" />
@@ -2043,7 +2043,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                     <section className="rounded-3xl bg-slate-50 border border-slate-200 p-4 sm:p-5 space-y-3">
                       <div className="border-b border-slate-200 pb-2">
                         <div className="text-[10px] font-mono font-bold text-amber-700 uppercase tracking-widest">
-                          SECTION 04 · CAREER RECORD
+                          CAREER RECORD
                         </div>
                         <h3 className="text-sm font-display font-black text-slate-900 mt-0.5">
                           Total Scholar Activity
