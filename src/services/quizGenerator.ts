@@ -30,7 +30,7 @@ export interface QuizGenerationInput {
   video?: StudyMaterialSelection['video'];
 }
 
-const API_URL = (import.meta.env.VITE_API_URL || window.location.origin).replace(/\/$/, '');
+const API_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 
 export async function generateQuizDeck(input: QuizGenerationInput): Promise<QuizDeck> {
   if (!input.title.trim()) throw new Error('Enter a title for this quiz.');
@@ -46,17 +46,30 @@ export async function generateQuizDeck(input: QuizGenerationInput): Promise<Quiz
   try {
     response = await fetch(`${API_URL}/api/quiz/generate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      credentials: API_URL ? 'include' : 'same-origin',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
       body: JSON.stringify(input),
     });
   } catch {
     throw new Error('Could not reach the quiz service. Check the connection and try again.');
   }
 
+  const rawText = await response.text().catch(() => '');
   let payload: unknown;
   try {
-    payload = await response.json();
+    payload = rawText ? JSON.parse(rawText) : null;
   } catch {
+    const contentType = response.headers.get('content-type') || '';
+    if (
+      response.url.includes('__cookie_check') ||
+      contentType.includes('text/html') ||
+      rawText.trimStart().startsWith('<')
+    ) {
+      throw new Error('Preview session expired or blocked cookies. Reload the page or allow cookies and try again.');
+    }
     throw new Error(`Quiz service returned an invalid response (HTTP ${response.status}).`);
   }
 

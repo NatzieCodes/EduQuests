@@ -216,8 +216,8 @@ export const ClassmateRoomModal: React.FC<ClassmateRoomModalProps> = ({
             </div>
           </section>
 
-          <aside className="border-l border-slate-200 bg-slate-50/60 p-4 lg:overflow-y-auto sm:p-5">
-            <form onSubmit={handleCreateRoom} className="rounded-2xl border border-slate-200 bg-white p-4">
+          <aside className="flex min-h-0 flex-col gap-3.5 border-l border-slate-200 bg-slate-50/60 p-4 lg:overflow-y-auto sm:p-5">
+            <form onSubmit={handleCreateRoom} className="shrink-0 rounded-2xl border border-slate-200 bg-white p-4">
               <div className="mb-3 flex items-start justify-between gap-2 border-b border-slate-200 pb-3">
                 <div>
                   <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-amber-700">Create / Add</p>
@@ -232,41 +232,76 @@ export const ClassmateRoomModal: React.FC<ClassmateRoomModalProps> = ({
               <button className="flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500 text-xs font-display font-black text-slate-950 shadow-md transition hover:from-yellow-200 hover:to-amber-400"><Plus size={16} /> CREATE ROOM</button>
             </form>
 
-            <form onSubmit={handleInvite} className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
-              <div className="mb-3 flex items-center gap-2 text-sm font-black text-slate-900"><UserPlus size={17} className="text-amber-500" /> INVITE PLAYER</div>
+            <form onSubmit={handleInvite} className="shrink-0 rounded-2xl border border-slate-200 bg-white p-4">
+              <div className="mb-1 flex items-center gap-2 text-sm font-black text-slate-900"><UserPlus size={17} className="text-amber-500" /> INVITE PLAYER</div>
+              <p className="mb-3 text-[11px] text-slate-500">Send a direct room invite to a classmate&apos;s username.</p>
               <div className="flex gap-2">
                 <input value={inviteUsernameInput} onChange={(e) => setInviteUsernameInput(e.target.value)} placeholder="Username" className="h-10 min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold outline-none focus:border-amber-400" />
-                <button className="h-10 cursor-pointer rounded-lg bg-slate-900 px-3 text-xs font-black text-yellow-300">INVITE</button>
+                <button className="h-10 cursor-pointer rounded-lg bg-slate-900 px-3.5 text-xs font-black text-yellow-300">INVITE</button>
               </div>
             </form>
 
-            {isJoinedInRoom && (
-              <div className="mt-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5">
-                <div className="flex items-center justify-between gap-2">
+            <div className="flex min-h-[168px] flex-1 flex-col justify-between rounded-2xl border border-slate-200 bg-white p-4">
+              <div>
+                <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2.5">
                   <div className="min-w-0">
-                    <p className="text-[9px] font-mono font-black uppercase tracking-wider text-amber-700">Joined room</p>
-                    <p className="truncate text-xs font-black text-slate-900">#{roomCode} · {activeDeck.title}</p>
+                    <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-amber-700">
+                      {isJoinedInRoom ? 'Joined Room' : 'Current Lobby'}
+                    </p>
+                    <p className="mt-0.5 truncate text-sm font-display font-black text-slate-900">
+                      {isJoinedInRoom ? `#${roomCode}` : 'Solo Lobby'}
+                    </p>
                   </div>
-                  <div className="flex shrink-0 items-center gap-1.5">
-                    <button type="button" onClick={onSyncDeckToRoom} className="h-8 rounded-lg border border-slate-300 px-2.5 text-[10px] font-black text-slate-700 hover:border-amber-400 hover:bg-amber-50">
-                      SYNC
+                  <span className="shrink-0 rounded-full bg-slate-900 px-2.5 py-1 text-[10px] font-mono font-bold text-yellow-300">
+                    {classmates.length}/{MAX_ROOM_LIMIT}
+                  </span>
+                </div>
+
+                <div className="mt-2.5 rounded-xl bg-amber-50/70 px-3 py-2 border border-amber-200/80">
+                  <p className="text-[9px] font-mono font-bold uppercase tracking-wider text-amber-800">Active Study Deck</p>
+                  <p className="truncate text-xs font-display font-black text-slate-900">{activeDeck.title}</p>
+                </div>
+
+                <div className="mt-2.5 space-y-1.5">
+                  {classmates.length > 0 ? (
+                    classmates.slice(0, 4).map((member) => (
+                      <div key={member.id} className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-2.5 py-1.5 text-xs">
+                        <span className="truncate font-bold text-slate-800">@{member.name}</span>
+                        <span className="shrink-0 text-[9px] font-mono font-bold text-slate-500">
+                          {member.isHost ? 'HOST' : HEROES.find((hero) => hero.id === member.heroId)?.name || 'Squad'}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="py-2 text-xs leading-relaxed text-slate-500">
+                      Create a room above or join an available room on the left to study together.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {isJoinedInRoom && (
+                <div className="mt-3 pt-2.5 border-t border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={onSyncDeckToRoom} className="h-9 flex-1 rounded-lg border border-slate-300 px-2.5 text-[10px] font-black text-slate-700 hover:border-amber-400 hover:bg-amber-50 cursor-pointer">
+                      SYNC DECK
                     </button>
-                    <button type="button" onClick={() => setConfirmLeave(true)} className="flex h-8 items-center gap-1 rounded-lg px-2 text-[10px] font-black text-rose-700 hover:bg-rose-50">
+                    <button type="button" onClick={() => setConfirmLeave(true)} className="flex h-9 items-center justify-center gap-1 rounded-lg border border-rose-200 px-3 text-[10px] font-black text-rose-700 hover:bg-rose-50 cursor-pointer">
                       <LogOut size={13} /> LEAVE
                     </button>
                   </div>
-                </div>
-                {confirmLeave && (
-                  <div role="alertdialog" aria-label="Confirm leaving room" className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-2">
-                    <span className="text-[10px] font-bold text-rose-900">Leave this room?</span>
-                    <div className="flex shrink-0 gap-1.5">
-                      <button type="button" onClick={() => setConfirmLeave(false)} className="rounded-md px-2 py-1 text-[10px] font-bold text-slate-600 hover:bg-white">Cancel</button>
-                      <button type="button" onClick={() => { setConfirmLeave(false); onLeaveRoom?.(); }} className="rounded-md bg-rose-700 px-2 py-1 text-[10px] font-black text-white hover:bg-rose-800">Leave</button>
+                  {confirmLeave && (
+                    <div role="alertdialog" aria-label="Confirm leaving room" className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-2">
+                      <span className="text-[10px] font-bold text-rose-900">Leave this room?</span>
+                      <div className="flex shrink-0 gap-1.5">
+                        <button type="button" onClick={() => setConfirmLeave(false)} className="rounded-md px-2 py-1 text-[10px] font-bold text-slate-600 hover:bg-white">Cancel</button>
+                        <button type="button" onClick={() => { setConfirmLeave(false); onLeaveRoom?.(); }} className="rounded-md bg-rose-700 px-2 py-1 text-[10px] font-black text-white hover:bg-rose-800">Leave</button>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
+                  )}
+                </div>
+              )}
+            </div>
           </aside>
         </div>
       </div>

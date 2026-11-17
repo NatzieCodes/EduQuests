@@ -8,7 +8,7 @@ import {
   QuizDeck,
   QuizQuestion,
 } from '../game/rules';
-import { LogOut, Pause, RotateCcw, Shield, Volume2, VolumeX, CheckCircle2, XCircle } from 'lucide-react';
+import { LogOut, Pause, RotateCcw, Shield, Volume1, Volume2, VolumeX, CheckCircle2, XCircle } from 'lucide-react';
 
 interface BattleHudProps {
   combat: BattleCombatState;
@@ -39,6 +39,8 @@ interface BattleHudProps {
   onExitToLobby: () => void;
   muted: boolean;
   onToggleMute: () => void;
+  volume: number;
+  onChangeVolume: (volume: number) => void;
   classmates: ClassmateMember[];
   liveToast: string | null;
 }
@@ -62,6 +64,8 @@ export const BattleHud: React.FC<BattleHudProps> = ({
   onExitToLobby,
   muted,
   onToggleMute,
+  volume,
+  onChangeVolume,
   classmates,
   liveToast,
 }) => {
@@ -298,20 +302,43 @@ export const BattleHud: React.FC<BattleHudProps> = ({
             )}
           </div>
 
-          {/* Top-Right Compact Utility Buttons: Mute [M], Pause [P], Restart [R] */}
+          {/* Top-Right Compact Utility Controls: Volume Slider + Mute [M], Restart [R], Pause [P] */}
           <div className="pointer-events-auto flex items-center gap-1.5">
-            <button
-              type="button"
-              tabIndex={-1}
-              onClick={(e) => {
-                e.currentTarget.blur();
-                onToggleMute();
-              }}
-              aria-label={muted ? 'Unmute [M]' : 'Mute [M]'}
-              className="w-8 h-8 rounded-lg bg-slate-950/80 hover:bg-slate-900 border border-white/20 text-white flex items-center justify-center"
-            >
-              {muted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4 text-yellow-400" />}
-            </button>
+            <div className="flex h-8 items-center gap-1.5 rounded-lg border border-white/20 bg-slate-950/85 px-2 shadow-lg">
+              <button
+                type="button"
+                tabIndex={-1}
+                onClick={(e) => {
+                  e.currentTarget.blur();
+                  onToggleMute();
+                }}
+                aria-label={muted ? 'Unmute [M]' : 'Mute [M]'}
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-white transition hover:bg-white/10 cursor-pointer"
+              >
+                {muted || volume <= 0 ? (
+                  <VolumeX className="h-4 w-4 text-rose-400" />
+                ) : volume < 0.5 ? (
+                  <Volume1 className="h-4 w-4 text-yellow-400" />
+                ) : (
+                  <Volume2 className="h-4 w-4 text-yellow-400" />
+                )}
+              </button>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={1}
+                value={muted ? 0 : Math.round(volume * 100)}
+                onChange={(e) => onChangeVolume(Number(e.target.value) / 100)}
+                onMouseUp={(e) => e.currentTarget.blur()}
+                onTouchEnd={(e) => e.currentTarget.blur()}
+                aria-label="Sound volume"
+                className="h-1.5 w-16 sm:w-24 cursor-pointer accent-amber-400"
+              />
+              <span className="w-8 text-right font-mono-num text-[10px] font-bold tabular-nums text-slate-200">
+                {muted ? 0 : Math.round(volume * 100)}%
+              </span>
+            </div>
             <button
               type="button"
               tabIndex={-1}
@@ -341,11 +368,11 @@ export const BattleHud: React.FC<BattleHudProps> = ({
       </div>
 
       {/* =====================================================================
-          FLOATING IN-WORLD HP BARS (Above Left Player & Right Enemy/Boss)
+          FLOATING IN-WORLD HP BARS (Above Left-Center Player & Right-Center Enemy)
          ===================================================================== */}
       <div className="relative flex-1 w-full pointer-events-none">
         {/* Enemy / Classmate / Boss HP Bar (Upper Right-Center) */}
-        <div className="absolute top-3 right-[12%] sm:right-[20%] w-48 sm:w-64">
+        <div className="absolute top-1 sm:top-2 right-[14%] sm:right-[25%] w-44 sm:w-60">
           <div className="flex items-center justify-between text-xs font-mono-num font-bold text-white stroke-text-sm mb-1">
             <span>{opponentLabel} HP</span>
             <span>
@@ -362,8 +389,8 @@ export const BattleHud: React.FC<BattleHudProps> = ({
           </div>
         </div>
 
-        {/* Player HP Bar (Mid-Left above the 3D Player Avatar) */}
-        <div className="absolute bottom-6 left-[6%] sm:left-[12%] w-44 sm:w-56">
+        {/* Player HP Bar (Lower Left-Center beside the 3D Player Avatar) */}
+        <div className="absolute bottom-3 left-[8%] sm:left-[18%] w-44 sm:w-56">
           <div className="flex items-center justify-between text-xs font-mono-num font-bold text-white stroke-text-sm mb-1">
             <span>@{studentName} HP</span>
             <span>

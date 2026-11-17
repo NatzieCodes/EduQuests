@@ -3,6 +3,7 @@ import {
   ChevronRight,
   CheckCircle2,
   LogIn,
+  Shield,
   UserPlus,
 } from 'lucide-react';
 import { computeCircularPreviewOrbit } from '../game/rules';
@@ -165,12 +166,14 @@ interface StartingLoginPageProps {
   defaultBlockSection: string;
   onLoginEnter: (username: string, blockSection: string, password: string) => void | Promise<void>;
   onRegisterEnter: (username: string, blockSection: string, password: string, confirmPassword?: string) => void | Promise<void>;
+  onOpenModerator?: () => void;
 }
 
 export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
   defaultBlockSection,
   onLoginEnter,
   onRegisterEnter,
+  onOpenModerator,
 }) => {
   const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
@@ -515,6 +518,23 @@ export const StartingLoginPage: React.FC<StartingLoginPageProps> = ({
               </button>
             </div>
           </div>
+
+          {onOpenModerator && (
+            <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between gap-2">
+              <span className="text-xs text-slate-500 font-medium">
+                Developer / App Moderator?
+              </span>
+              <button
+                type="button"
+                data-testid="starting-moderator-btn"
+                onClick={onOpenModerator}
+                className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-300 text-xs font-semibold text-slate-800 flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+              >
+                <Shield className="w-3.5 h-3.5 text-amber-600" />
+                <span>Moderator Console</span>
+              </button>
+            </div>
+          )}
 
         </section>
 

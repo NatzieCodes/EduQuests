@@ -146,7 +146,13 @@ export const StudyMaterialPicker: React.FC<StudyMaterialPickerProps> = ({ value,
   };
 
   return (
-    <div className="relative flex min-w-0 items-center gap-2">
+    <div className="relative flex w-full min-w-0 items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5">
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-[10px] font-bold text-slate-700" title={value?.name || 'Attach PDF, TXT, link, or video'}>
+          {value?.name || 'Attach PDF, TXT, link, or video'}
+        </div>
+        {value && <div className="truncate text-[9px] text-slate-500">{value.kind === 'pdf' ? 'PDF text extracted' : value.kind === 'text' ? 'Text file loaded' : value.kind === 'video' ? 'Video ready for AI' : value.sourceUrl}</div>}
+      </div>
       <div className="relative shrink-0">
         <button
           type="button"
@@ -158,9 +164,9 @@ export const StudyMaterialPicker: React.FC<StudyMaterialPickerProps> = ({ value,
             setMenuOpen((open) => !open);
             setUrlMode(null);
           }}
-          className="grid h-10 w-10 place-items-center rounded-full border border-amber-300 bg-slate-900 text-yellow-300 shadow-sm transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
+          className="grid h-8 w-12 place-items-center rounded-lg border border-amber-300 bg-slate-900 text-yellow-300 shadow-sm transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-400 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
         >
-          {loading ? <LoaderCircle className="h-5 w-5 animate-spin" /> : menuOpen ? <X className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
+          {loading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : menuOpen ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
         </button>
         <input ref={pdfInputRef} type="file" accept=".pdf,application/pdf" className="hidden" onChange={(event) => {
           const file = event.currentTarget.files?.[0];
@@ -179,7 +185,7 @@ export const StudyMaterialPicker: React.FC<StudyMaterialPickerProps> = ({ value,
         }} />
 
         {menuOpen && (
-          <div className="absolute left-0 top-12 z-30 w-64 rounded-2xl border border-slate-200 bg-white p-2 text-slate-900 shadow-xl">
+          <div className="absolute right-0 top-10 z-30 w-64 rounded-2xl border border-slate-200 bg-white p-2 text-slate-900 shadow-xl">
             {!urlMode ? (
               <div className="space-y-1">
                 <button type="button" onClick={() => pdfInputRef.current?.click()} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs font-bold hover:bg-amber-50">
@@ -228,13 +234,7 @@ export const StudyMaterialPicker: React.FC<StudyMaterialPickerProps> = ({ value,
           </div>
         )}
       </div>
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-[10px] font-bold text-slate-700" title={value?.name || 'Attach PDF, TXT, link, or video'}>
-          {value?.name || 'Attach PDF, TXT, link, or video'}
-        </div>
-        {value && <div className="truncate text-[9px] text-slate-500">{value.kind === 'pdf' ? 'PDF text extracted' : value.kind === 'text' ? 'Text file loaded' : value.kind === 'video' ? 'Video ready for AI' : value.sourceUrl}</div>}
-      </div>
-      {error && <div className="absolute left-0 top-full z-20 mt-2 max-w-full rounded-lg border border-rose-200 bg-rose-50 p-2 text-[10px] font-bold text-rose-700 shadow-lg">{error}</div>}
+      {error && <div className="absolute left-0 right-0 top-full z-20 mt-1.5 rounded-lg border border-rose-200 bg-rose-50 p-2 text-[10px] font-bold text-rose-700 shadow-lg">{error}</div>}
     </div>
   );
 };

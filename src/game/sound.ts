@@ -1,26 +1,97 @@
 // Zero-dependency procedural Web Audio synthesizer for EduQuests 3D
 
+const VOLUME_STORAGE_KEY = 'eduquests-sfx-volume';
+const MUTED_STORAGE_KEY = 'eduquests-sfx-muted';
+
+function readStoredVolume(): number {
+  if (typeof window === 'undefined') return 0.8;
+  try {
+    const raw = window.localStorage.getItem(VOLUME_STORAGE_KEY);
+    if (raw !== null) {
+      const parsed = Number(raw);
+      if (Number.isFinite(parsed)) {
+        return Math.max(0, Math.min(1, parsed));
+      }
+    }
+  } catch {
+    // Ignore storage read failures.
+  }
+  return 0.8;
+}
+
+function readStoredMuted(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.localStorage.getItem(MUTED_STORAGE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
 class SoundEffects {
   private ctx: AudioContext | null = null;
-  public muted = false;
+  private masterGain: GainNode | null = null;
+  private volume: number = readStoredVolume();
+  public muted: boolean = readStoredMuted();
 
-  private ensureContext(): AudioContext | null {
-    if (this.muted || typeof window === 'undefined') return null;
+  getVolume(): number {
+    return this.volume;
+  }
+
+  setVolume(nextVolume: number) {
+    const clamped = Math.max(0, Math.min(1, Number.isFinite(nextVolume) ? nextVolume : 0.8));
+    this.volume = clamped;
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.setItem(VOLUME_STORAGE_KEY, String(clamped));
+      } catch {
+        // Ignore storage write failures.
+      }
+    }
+    this.syncMasterGain();
+  }
+
+  setMuted(nextMuted: boolean) {
+    this.muted = nextMuted;
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.setItem(MUTED_STORAGE_KEY, String(nextMuted));
+      } catch {
+        // Ignore storage write failures.
+      }
+    }
+    this.syncMasterGain();
+  }
+
+  private syncMasterGain() {
+    if (!this.ctx || !this.masterGain) return;
+    const targetGain = this.muted ? 0 : this.volume;
+    this.masterGain.gain.setTargetAtTime(targetGain, this.ctx.currentTime, 0.015);
+  }
+
+  private ensureContext(): { ctx: AudioContext; destination: AudioNode } | null {
+    if (this.muted || this.volume <= 0 || typeof window === 'undefined') return null;
     if (!this.ctx) {
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (AudioCtx) {
         this.ctx = new AudioCtx();
+        this.masterGain = this.ctx.createGain();
+        this.masterGain.gain.value = this.muted ? 0 : this.volume;
+        this.masterGain.connect(this.ctx.destination);
       }
     }
     if (this.ctx && this.ctx.state === 'suspended') {
       this.ctx.resume().catch(() => {});
     }
-    return this.ctx;
+    if (!this.ctx || !this.masterGain) return null;
+    this.masterGain.gain.value = this.muted ? 0 : this.volume;
+    return { ctx: this.ctx, destination: this.masterGain };
   }
 
   playClick() {
-    const ctx = this.ensureContext();
-    if (!ctx) return;
+    const audio = this.ensureContext();
+    if (!audio) return;
+    const { ctx, destination } = audio;
     const now = ctx.currentTime;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -30,14 +101,15 @@ class SoundEffects {
     gain.gain.setValueAtTime(0.08, now);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(destination);
     osc.start(now);
     osc.stop(now + 0.065);
   }
 
   playFastAttack() {
-    const ctx = this.ensureContext();
-    if (!ctx) return;
+    const audio = this.ensureContext();
+    if (!audio) return;
+    const { ctx, destination } = audio;
     const now = ctx.currentTime;
     const pitchVariance = 0.94 + Math.random() * 0.12;
 
@@ -52,14 +124,15 @@ class SoundEffects {
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.23);
 
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(destination);
     osc.start(now);
     osc.stop(now + 0.24);
   }
 
   playChargedMove() {
-    const ctx = this.ensureContext();
-    if (!ctx) return;
+    const audio = this.ensureContext();
+    if (!audio) return;
+    const { ctx, destination } = audio;
     const now = ctx.currentTime;
 
     // Rising charge + heavy impact chord
@@ -77,15 +150,16 @@ class SoundEffects {
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
 
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      gain.connect(destination);
       osc.start(now);
       osc.stop(now + 0.56);
     });
   }
 
   playEnemyCounter(shieldBlocked = false) {
-    const ctx = this.ensureContext();
-    if (!ctx) return;
+    const audio = this.ensureContext();
+    if (!audio) return;
+    const { ctx, destination } = audio;
     const now = ctx.currentTime;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -105,14 +179,15 @@ class SoundEffects {
     }
 
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(destination);
     osc.start(now);
     osc.stop(now + 0.27);
   }
 
   playOutcome(victory: boolean) {
-    const ctx = this.ensureContext();
-    if (!ctx) return;
+    const audio = this.ensureContext();
+    if (!audio) return;
+    const { ctx, destination } = audio;
     const now = ctx.currentTime;
     const notes = victory ? [523.25, 659.25, 783.99, 1046.5] : [392.0, 349.23, 311.13, 261.63];
 
@@ -125,7 +200,7 @@ class SoundEffects {
       gain.gain.setValueAtTime(0.12, start);
       gain.gain.exponentialRampToValueAtTime(0.001, start + 0.28);
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      gain.connect(destination);
       osc.start(start);
       osc.stop(start + 0.3);
     });

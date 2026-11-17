@@ -46,6 +46,7 @@ import {
   Download,
   Maximize2,
   Trash2,
+  Shield,
 } from 'lucide-react';
 import { ScholarProgress } from '../services/progression';
 import {
@@ -133,6 +134,7 @@ interface LobbyOverlayProps {
   rewardAccountId: string;
   onClaimDailyReward: () => Promise<boolean>;
   onClaimAchievementReward: (achievementId: string) => Promise<boolean>;
+  onOpenModerator?: () => void;
 }
 
 const MAX_ROOM_PLAYERS = 6;
@@ -239,6 +241,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
   rewardAccountId,
   onClaimDailyReward,
   onClaimAchievementReward,
+  onOpenModerator,
 }) => {
   const [authModalMode, setAuthModalMode] = useState<'closed' | 'profile' | 'login' | 'register'>('closed');
   const [profilePanel, setProfilePanel] = useState<
@@ -854,14 +857,27 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
           </div>
         )}
 
-        {/* Right: Real Utility Controls (Share Link & Settings — No Simulations!) */}
+        {/* Right: Real Utility Controls (Moderator, Share Link & Settings) */}
         <div className="pointer-events-auto flex items-center gap-2">
+          {onOpenModerator && (
+            <button
+              type="button"
+              data-testid="lobby-moderator-btn"
+              onClick={onOpenModerator}
+              aria-label="Open App Moderator Console"
+              className="px-3.5 py-2 rounded-2xl bg-slate-900 hover:bg-slate-800 hover:-translate-y-0.5 active:translate-y-0 text-yellow-300 border border-slate-700 font-display font-extrabold text-xs flex items-center gap-1.5 shadow-md hover:shadow-lg transition-all cursor-pointer whitespace-nowrap shrink-0"
+            >
+              <Shield className="w-4 h-4 text-yellow-400" />
+              <span>MODERATOR</span>
+            </button>
+          )}
+
           <button
             type="button"
             data-testid="share-link-btn"
             onClick={() => setShareModalOpen(true)}
             aria-label="Open Share & GitHub Link"
-            className="px-3.5 py-2 rounded-2xl bg-white/95 hover:bg-yellow-300 hover:-translate-y-0.5 active:translate-y-0 text-slate-900 border border-slate-200 hover:border-amber-400 font-display font-extrabold text-xs flex items-center gap-1.5 shadow-md hover:shadow-lg transition-all cursor-pointer"
+            className="px-3.5 py-2 rounded-2xl bg-white/95 hover:bg-yellow-300 hover:-translate-y-0.5 active:translate-y-0 text-slate-900 border border-slate-200 hover:border-amber-400 font-display font-extrabold text-xs flex items-center gap-1.5 shadow-md hover:shadow-lg transition-all cursor-pointer whitespace-nowrap shrink-0"
           >
             <Share2 className="w-4 h-4 text-amber-600" />
             <span>SHARE LINK</span>
@@ -872,7 +888,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
             data-testid="settings-btn"
             onClick={() => setSettingsOpen(true)}
             aria-label="Open Settings"
-            className="px-3.5 py-2 rounded-2xl bg-white/95 hover:bg-yellow-300 hover:-translate-y-0.5 active:translate-y-0 text-slate-900 border border-slate-200 hover:border-amber-400 font-display font-extrabold text-xs flex items-center gap-2 shadow-md hover:shadow-lg transition-all cursor-pointer"
+            className="px-3.5 py-2 rounded-2xl bg-white/95 hover:bg-yellow-300 hover:-translate-y-0.5 active:translate-y-0 text-slate-900 border border-slate-200 hover:border-amber-400 font-display font-extrabold text-xs flex items-center gap-2 shadow-md hover:shadow-lg transition-all cursor-pointer whitespace-nowrap shrink-0"
           >
             <Settings className="w-4 h-4 text-amber-600" />
             <span>SETTINGS</span>
@@ -1427,10 +1443,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                     <button
                       key={mKey}
                       type="button"
-                      onClick={() => {
-                        onSelectMode(mKey);
-                        if (mKey === 'training') onOpenBattleSetup('training');
-                      }}
+                      onClick={() => onSelectMode(mKey)}
                       className={`py-2 px-1 rounded-xl text-center transition-all cursor-pointer ${
                         isSelected
                           ? 'bg-slate-900 text-yellow-300 font-black shadow-xs scale-[1.02]'
@@ -1468,7 +1481,7 @@ export const LobbyOverlay: React.FC<LobbyOverlayProps> = ({
                 }}
                 className="w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500 hover:from-yellow-200 hover:to-amber-400 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99] text-slate-950 font-display font-black text-base tracking-wide flex items-center justify-center gap-2 shadow-[0_8px_24px_rgba(245,158,11,0.45)] hover:shadow-[0_12px_28px_rgba(245,158,11,0.6)] transition-all whitespace-nowrap cursor-pointer"
               >
-                <span>{selectedMode === 'training' ? 'CREATE SOLO GAME' : 'START'}</span>
+                <span>START</span>
               </button>
             </div>
 

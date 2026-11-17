@@ -33,6 +33,7 @@ import { StatusModal } from './components/StatusModal';
 import { CharacterCustomizerModal } from './components/CharacterCustomizerModal';
 import { StartingLoginPage } from './components/StartingLoginPage';
 import { BattleSetupModal } from './components/BattleSetupModal';
+import { ModeratorModal } from './components/ModeratorModal';
 import { soundFX } from './game/sound';
 import { clearAccountToken, getCurrentAccount, loginAccount, registerAccount, saveAccountToken } from './services/auth';
 import {
@@ -113,10 +114,21 @@ export default function App() {
   const [hasRoomOrInvite, setHasRoomOrInvite] = useState<boolean>(initialAutostart);
   const [startBattleAfterNotes, setStartBattleAfterNotes] = useState<boolean>(false);
 
+  const initialModeratorRoute =
+    typeof window !== 'undefined' &&
+    (window.location.pathname.replace(/\/+$/, '') === '/moderator' ||
+      new URLSearchParams(window.location.search).get('moderator') === '1');
+
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [roomModalOpen, setRoomModalOpen] = useState(false);
   const [battleSetupOpen, setBattleSetupOpen] = useState(false);
-  const [muted, setMuted] = useState(false);
+  const [moderatorOpen, setModeratorOpen] = useState(initialModeratorRoute);
+  const [moderatorDisplayMode, setModeratorDisplayMode] = useState<'modal' | 'page'>(
+    initialModeratorRoute ? 'page' : 'modal'
+  );
+  const [muted, setMuted] = useState(() => soundFX.muted);
+  const [volume, setVolume] = useState(() => soundFX.getVolume());
+  const lastNonZeroVolumeRef = useRef(soundFX.getVolume() > 0 ? soundFX.getVolume() : 0.8);
 
   // Character Customization State (Sex, Outfit, Accent Glow)
   const [characterGender, setCharacterGender] = useState<'male' | 'female' | 'neutral'>('neutral');
@@ -413,6 +425,37 @@ export default function App() {
             showToast(`Battle Invite received from @${msg.invitation.username}!`);
           } else if (msg.type === 'battle:hit' && msg.memberId !== localPlayerId) {
             showToast(`${msg.memberName} dealt ${msg.damage} DMG!`);
+            setCombatEvent({
+              id: Date.now(),
+              type: 'ally_strike',
+            });
+          } else if (
+            msg.type === 'moderation:kicked' ||
+            msg.type === 'moderation:room_closed' ||
+            msg.type === 'moderation:banned'
+          ) {
+            setIsJoinedInRoom(false);
+            setHasRoomOrInvite(false);
+            setChatMessages([]);
+            setClassmates([buildLocalMember()]);
+            setBattleSetupOpen(false);
+            setRoomModalOpen(false);
+            document.body.dataset.state = 'title';
+            setShellState('title');
+            showToast(msg.message || 'You were removed from the room by a moderator.');
+          } else if (msg.type === 'moderation:battle_ended') {
+            setBattleSetupOpen(false);
+            document.body.dataset.state = 'title';
+            setShellState('title');
+            showToast(msg.message || 'The moderator ended this battle.');
+          } else if (
+            msg.type === 'moderation:muted' ||
+            msg.type === 'moderation:notice' ||
+            msg.type === 'moderation:announcement'
+          ) {
+            if (msg.message) {
+              showToast(msg.message);
+            }
           }
         } catch {
           // Ignore malformed WS event
@@ -492,8 +535,16 @@ export default function App() {
       battleStartRef.current = performance.now();
       document.body.dataset.state = 'playing';
       setShellState('playing');
+      if (isJoinedInRoom && wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(
+          JSON.stringify({
+            type: 'battle:start',
+            roomCode,
+          })
+        );
+      }
     },
-    [selectedMode, selectedHero, battleDurationSec, activeDeck]
+    [selectedMode, selectedHero, battleDurationSec, activeDeck, isJoinedInRoom, roomCode]
   );
 
   const restartCurrentBattle = useCallback(
@@ -566,8 +617,16 @@ export default function App() {
       soundFX.playOutcome(isVictory);
       document.body.dataset.state = 'gameover';
       setShellState('gameover');
+      if (isJoinedInRoom && wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(
+          JSON.stringify({
+            type: 'battle:end',
+            roomCode,
+          })
+        );
+      }
     },
-    [progressionAccountId, showToast, battleDeck.questions.length]
+    [progressionAccountId, showToast, battleDeck.questions.length, isJoinedInRoom, roomCode]
   );
 
   // Countdown timer during active battle (for Raid, PvP, Team modes)
@@ -651,6 +710,7 @@ export default function App() {
         setCombatEvent({
           id: Date.now(),
           type: 'enemy_counter',
+          blockedByPlayer: shieldUsedByPlayer,
         });
       }
 
@@ -742,8 +802,28 @@ export default function App() {
   );
 
   const handleToggleMute = useCallback(() => {
-    soundFX.muted = !soundFX.muted;
-    setMuted(soundFX.muted);
+    const nextMuted = !soundFX.muted;
+    if (!nextMuted && soundFX.getVolume() <= 0) {
+      const restored = lastNonZeroVolumeRef.current > 0 ? lastNonZeroVolumeRef.current : 0.8;
+      soundFX.setVolume(restored);
+      setVolume(restored);
+    }
+    soundFX.setMuted(nextMuted);
+    setMuted(nextMuted);
+  }, []);
+
+  const handleChangeVolume = useCallback((nextVolume: number) => {
+    const clamped = Math.max(0, Math.min(1, nextVolume));
+    if (clamped > 0) {
+      lastNonZeroVolumeRef.current = clamped;
+    }
+    soundFX.setVolume(clamped);
+    setVolume(clamped);
+    const shouldMute = clamped <= 0;
+    if (soundFX.muted !== shouldMute) {
+      soundFX.setMuted(shouldMute);
+      setMuted(shouldMute);
+    }
   }, []);
 
   // Unified Window Keyboard Listener
@@ -759,11 +839,12 @@ export default function App() {
         return;
       }
 
-      if (aiModalOpen || roomModalOpen || battleSetupOpen) {
+      if (aiModalOpen || roomModalOpen || battleSetupOpen || moderatorOpen) {
         if (e.key === 'Escape') {
           setAiModalOpen(false);
           setStartBattleAfterNotes(false);
           setRoomModalOpen(false);
+          setModeratorOpen(false);
         }
         return;
       }
@@ -823,6 +904,7 @@ export default function App() {
     aiModalOpen,
     roomModalOpen,
     battleSetupOpen,
+    moderatorOpen,
     shellState,
     hasEnteredLobby,
     selectedMode,
@@ -1159,6 +1241,14 @@ export default function App() {
         combatEvent={combatEvent}
         classmates={isJoinedInRoom ? classmates : []}
         localPlayerId={localPlayerId}
+        isShieldArmed={useShieldNext}
+        battleOutcome={
+          shellState === 'gameover'
+            ? runSnapshot?.victory
+              ? 'victory'
+              : 'defeat'
+            : null
+        }
       />
 
       {/* Starting / Login Page with Circular Game Preview (shown before entering the actual Lobby) */}
@@ -1168,6 +1258,10 @@ export default function App() {
           defaultBlockSection={blockSection}
           onLoginEnter={handleLoginStudent}
           onRegisterEnter={handleRegisterStudent}
+          onOpenModerator={() => {
+            setModeratorDisplayMode('modal');
+            setModeratorOpen(true);
+          }}
         />
       )}
 
@@ -1228,6 +1322,10 @@ export default function App() {
           rewardAccountId={progressionAccountId}
           onClaimDailyReward={handleClaimDailyReward}
           onClaimAchievementReward={handleClaimAchievement}
+          onOpenModerator={() => {
+            setModeratorDisplayMode('modal');
+            setModeratorOpen(true);
+          }}
         />
       )}
 
@@ -1269,9 +1367,19 @@ export default function App() {
           onExitToLobby={() => {
             document.body.dataset.state = 'title';
             setShellState('title');
+            if (isJoinedInRoom && wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+              wsRef.current.send(
+                JSON.stringify({
+                  type: 'battle:end',
+                  roomCode,
+                })
+              );
+            }
           }}
           muted={muted}
           onToggleMute={handleToggleMute}
+          volume={volume}
+          onChangeVolume={handleChangeVolume}
           classmates={classmates}
           liveToast={liveToast}
         />
@@ -1389,6 +1497,30 @@ export default function App() {
         onReturnToTitle={() => {
           document.body.dataset.state = 'title';
           setShellState('title');
+          if (isJoinedInRoom && wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+            wsRef.current.send(
+              JSON.stringify({
+                type: 'battle:end',
+                roomCode,
+              })
+            );
+          }
+        }}
+      />
+
+      {/* Teacher / Moderator Console */}
+      <ModeratorModal
+        isOpen={moderatorOpen}
+        mode={moderatorDisplayMode}
+        onClose={() => {
+          setModeratorOpen(false);
+          if (
+            typeof window !== 'undefined' &&
+            (window.location.pathname.replace(/\/+$/, '') === '/moderator' ||
+              new URLSearchParams(window.location.search).get('moderator') === '1')
+          ) {
+            window.history.replaceState({}, document.title, '/');
+          }
         }}
       />
     </main>

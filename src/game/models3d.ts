@@ -7,6 +7,92 @@ export interface HeroAppearance {
   accentColor: string;
 }
 
+export interface FlashMaterialEntry {
+  material: THREE.MeshStandardMaterial | THREE.MeshToonMaterial;
+  baseEmissiveHex: number;
+  baseEmissiveIntensity: number;
+  baseColorHex: number;
+}
+
+export interface HeroRig {
+  root: THREE.Group;
+  bodyPivot: THREE.Group;
+  torsoPivot: THREE.Group;
+  headPivot: THREE.Group;
+  leftArmPivot: THREE.Group;
+  rightArmPivot: THREE.Group;
+  leftLegPivot: THREE.Group;
+  rightLegPivot: THREE.Group;
+  pokeBallGroup: THREE.Group;
+  shieldDome: THREE.Mesh;
+  shieldRing: THREE.Mesh;
+  baseRightArmRot: THREE.Euler;
+  baseLeftArmRot: THREE.Euler;
+  flashMaterials: FlashMaterialEntry[];
+}
+
+export interface EnemyRig {
+  root: THREE.Group;
+  mode: GameMode;
+  bodyPivot: THREE.Group;
+  torsoPivot: THREE.Group;
+  neckPivot: THREE.Group;
+  headPivot: THREE.Group;
+  scarfPivot: THREE.Group | null;
+  chestCore: THREE.Mesh | null;
+  legPivots: THREE.Group[];
+  springPivot: THREE.Group | null;
+  trainerPivot: THREE.Group | null;
+  trainerRightArmPivot: THREE.Group | null;
+  trainerLeftArmPivot: THREE.Group | null;
+  trainerHeadPivot: THREE.Group | null;
+  baseScale: number;
+  flashMaterials: FlashMaterialEntry[];
+}
+
+function collectFlashMaterials(group: THREE.Object3D): FlashMaterialEntry[] {
+  const seen = new Set<THREE.Material>();
+  const entries: FlashMaterialEntry[] = [];
+  group.traverse((obj) => {
+    if (!(obj instanceof THREE.Mesh)) return;
+    if (obj.name === 'hero-shield-dome' || obj.name === 'hero-shield-ring' || obj.name === 'character-custom-aura') {
+      return;
+    }
+    const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+    for (const mat of mats) {
+      if (seen.has(mat)) continue;
+      if (mat instanceof THREE.MeshStandardMaterial || mat instanceof THREE.MeshToonMaterial) {
+        seen.add(mat);
+        const baseEmissiveHex = 'emissive' in mat && mat.emissive ? mat.emissive.getHex() : 0x000000;
+        const baseEmissiveIntensity = 'emissiveIntensity' in mat ? mat.emissiveIntensity : 0;
+        entries.push({
+          material: mat,
+          baseEmissiveHex,
+          baseEmissiveIntensity,
+          baseColorHex: mat.color.getHex(),
+        });
+      }
+    }
+  });
+  return entries;
+}
+
+export function disposeObject3D(group: THREE.Object3D) {
+  const geometries = new Set<THREE.BufferGeometry>();
+  const materials = new Set<THREE.Material>();
+  group.traverse((obj) => {
+    if (obj instanceof THREE.Mesh) {
+      if (obj.geometry) geometries.add(obj.geometry);
+      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+      mats.forEach((m) => {
+        if (m) materials.add(m);
+      });
+    }
+  });
+  geometries.forEach((g) => g.dispose());
+  materials.forEach((m) => m.dispose());
+}
+
 /**
  * Helper to add a soft radial contact shadow disc at y = 0.015 under any grounded actor
  */
@@ -26,12 +112,67 @@ export function createContactShadow(radius = 1.1, opacity = 0.42): THREE.Mesh {
 
 /**
  * Builds one of the 4 playable 3D Heroes (8-12 parts each, bottom-center pivot at y=0)
- * matching both the Venge.io 4-hero squad and Pokémon GO battle companions.
+ * with articulated limb/torso/head/shield pivots for responsive combat animations.
  */
 export function buildHeroModel(heroId: HeroId, appearance?: HeroAppearance): THREE.Group {
   const root = new THREE.Group();
   root.name = `hero_${heroId}`;
   root.add(createContactShadow(0.95, 0.42));
+
+  // Grounded energy shield ring & translucent dome (used when Block is armed or blocks a hit)
+  const shieldRing = new THREE.Mesh(
+    new THREE.RingGeometry(0.78, 0.92, 36),
+    new THREE.MeshBasicMaterial({
+      color: 0xe879f9,
+      transparent: true,
+      opacity: 0,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    })
+  );
+  shieldRing.name = 'hero-shield-ring';
+  shieldRing.rotation.x = -Math.PI / 2;
+  shieldRing.position.y = 0.04;
+  root.add(shieldRing);
+
+  const shieldDome = new THREE.Mesh(
+    new THREE.IcosahedronGeometry(1.18, 1),
+    new THREE.MeshBasicMaterial({
+      color: 0xd946ef,
+      transparent: true,
+      opacity: 0,
+      wireframe: true,
+      depthWrite: false,
+    })
+  );
+  shieldDome.name = 'hero-shield-dome';
+  shieldDome.position.set(0, 1.16, 0);
+  shieldDome.visible = false;
+  root.add(shieldDome);
+
+  // Articulated Body Hierarchy (bottom-center grounded at y = 0)
+  const bodyPivot = new THREE.Group();
+  root.add(bodyPivot);
+
+  const leftLegPivot = new THREE.Group();
+  leftLegPivot.position.set(-0.2, 0.85, 0);
+  const rightLegPivot = new THREE.Group();
+  rightLegPivot.position.set(0.2, 0.85, 0);
+  bodyPivot.add(leftLegPivot, rightLegPivot);
+
+  const torsoPivot = new THREE.Group();
+  torsoPivot.position.set(0, 0.88, 0);
+  bodyPivot.add(torsoPivot);
+
+  const leftArmPivot = new THREE.Group();
+  leftArmPivot.position.set(-0.46, 0.62, 0.06);
+  const rightArmPivot = new THREE.Group();
+  rightArmPivot.position.set(0.46, 0.62, 0.06);
+  torsoPivot.add(leftArmPivot, rightArmPivot);
+
+  const headPivot = new THREE.Group();
+  headPivot.position.set(0, 0.78, 0.04);
+  torsoPivot.add(headPivot);
 
   // Pokémon GO Trainer Shared Toon Materials & Pokéball Helper
   const trainerGlovesMat = new THREE.MeshToonMaterial({ color: 0xfbbf24 });
@@ -63,10 +204,12 @@ export function buildHeroModel(heroId: HeroId, appearance?: HeroAppearance): THR
     return ballGroup;
   };
 
-  // Helper to add expressive eyes, catchlights, eyebrows, and smile to any Trainer Head
-  const addTrainerFace = (headY: number, headZ: number, irisHex = 0x2563eb) => {
+  let pokeBallGroup = new THREE.Group();
+
+  // Helper to attach expressive eyes, catchlights, eyebrows, and smile to headPivot
+  const addTrainerFace = (headOffsetY: number, irisHex = 0x2563eb) => {
     const faceGroup = new THREE.Group();
-    faceGroup.position.set(0, headY, headZ);
+    faceGroup.position.set(0, headOffsetY, 0);
 
     const scleraMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
     const irisMat = new THREE.MeshBasicMaterial({ color: irisHex });
@@ -109,7 +252,7 @@ export function buildHeroModel(heroId: HeroId, appearance?: HeroAppearance): THR
     smile.position.set(0, -0.075, 0.298);
     faceGroup.add(smile);
 
-    root.add(faceGroup);
+    headPivot.add(faceGroup);
   };
 
   if (heroId === 'shadow_shinobi') {
@@ -120,51 +263,49 @@ export function buildHeroModel(heroId: HeroId, appearance?: HeroAppearance): THR
     const hairMat = new THREE.MeshToonMaterial({ color: 0xfde047 });
     const skinMat = new THREE.MeshToonMaterial({ color: 0xf5d0b1 });
 
-    // 1. Sporty Trainer Pants & Sneakers
     const legGeo = new THREE.CapsuleGeometry(0.15, 0.62, 6, 12);
     const leftLeg = new THREE.Mesh(legGeo, pantMat);
-    leftLeg.position.set(-0.2, 0.46, 0);
+    leftLeg.position.set(0, -0.39, 0);
+    leftLegPivot.add(leftLeg);
+
     const rightLeg = new THREE.Mesh(legGeo, pantMat);
-    rightLeg.position.set(0.2, 0.46, 0);
-    root.add(leftLeg, rightLeg);
+    rightLeg.position.set(0, -0.39, 0);
+    rightLegPivot.add(rightLeg);
 
-    // 2. Instinct Yellow & Black Zip Jacket
     const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.29, 0.92, 10), jacketMat);
-    torso.position.set(0, 1.2, 0);
+    torso.position.set(0, 0.32, 0);
     const yellowHoodieLayer = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.26, 0.85, 10), accentYellow);
-    yellowHoodieLayer.position.set(0, 1.18, 0.04);
-    root.add(torso, yellowHoodieLayer);
-
-    // 3. Trainer Belt with Buckle
+    yellowHoodieLayer.position.set(0, 0.3, 0.04);
     const belt = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.1, 0.38), beltMat);
-    belt.position.set(0, 0.84, 0);
+    belt.position.set(0, -0.04, 0);
     const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.12, 0.42), beltBuckleMat);
-    buckle.position.set(0, 0.84, 0.02);
-    root.add(belt, buckle);
+    buckle.position.set(0, -0.04, 0.02);
+    torsoPivot.add(torso, yellowHoodieLayer, belt, buckle);
 
-    // 4. Athletic Arms & Gloves
     const armGeo = new THREE.CapsuleGeometry(0.11, 0.5, 6, 10);
     const leftArm = new THREE.Mesh(armGeo, jacketMat);
-    leftArm.position.set(-0.52, 1.26, 0.1);
-    leftArm.rotation.z = 0.3;
-    const rightArm = new THREE.Mesh(armGeo, jacketMat);
-    rightArm.position.set(0.52, 1.26, 0.1);
-    rightArm.rotation.z = -0.3;
+    leftArm.position.set(-0.06, -0.24, 0.04);
+    leftArm.rotation.z = 0.22;
     const leftGlove = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 10), trainerGlovesMat);
-    leftGlove.position.set(-0.62, 0.98, 0.15);
-    const rightHand = new THREE.Group();
-    rightHand.position.set(0.62, 0.98, 0.25);
-    rightHand.add(createPokeBall());
-    root.add(leftArm, rightArm, leftGlove, rightHand);
+    leftGlove.position.set(-0.14, -0.52, 0.08);
+    leftArmPivot.add(leftArm, leftGlove);
 
-    // 5. Confident Trainer Head & Spiky Hair
+    const rightArm = new THREE.Mesh(armGeo, jacketMat);
+    rightArm.position.set(0.06, -0.24, 0.04);
+    rightArm.rotation.z = -0.22;
+    const rightGlove = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 10), trainerGlovesMat);
+    rightGlove.position.set(0.14, -0.52, 0.14);
+    pokeBallGroup = createPokeBall();
+    pokeBallGroup.position.set(0.15, -0.52, 0.22);
+    rightArmPivot.add(rightArm, rightGlove, pokeBallGroup);
+
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.31, 16, 14), skinMat);
-    head.position.set(0, 1.88, 0.04);
+    head.position.set(0, 0.22, 0);
     const hair = new THREE.Mesh(new THREE.DodecahedronGeometry(0.34, 1), hairMat);
     hair.scale.set(1.1, 0.8, 1.2);
-    hair.position.set(0, 2.12, -0.02);
-    root.add(head, hair);
-    addTrainerFace(1.88, 0.04, 0xd97706);
+    hair.position.set(0, 0.46, -0.06);
+    headPivot.add(head, hair);
+    addTrainerFace(0.22, 0xd97706);
   } else if (heroId === 'arcane_scout') {
     // Blanche Style (Team Mystic Blue Coat, Scarf, Sleek Boots, Holding Pokéball)
     const coatMat = new THREE.MeshToonMaterial({ color: 0x3b82f6 });
@@ -173,48 +314,43 @@ export function buildHeroModel(heroId: HeroId, appearance?: HeroAppearance): THR
     const hairMat = new THREE.MeshToonMaterial({ color: 0x94a3b8 });
     const skinMat = new THREE.MeshToonMaterial({ color: 0xedd1b0 });
 
-    // 1. Sleek Boots & Tights
     const legGeo = new THREE.CapsuleGeometry(0.14, 0.65, 6, 12);
     const lLeg = new THREE.Mesh(legGeo, darkSuitMat);
-    lLeg.position.set(-0.2, 0.45, 0);
+    lLeg.position.set(0, -0.4, 0);
+    leftLegPivot.add(lLeg);
     const rLeg = new THREE.Mesh(legGeo, darkSuitMat);
-    rLeg.position.set(0.2, 0.45, 0);
-    root.add(lLeg, rLeg);
+    rLeg.position.set(0, -0.4, 0);
+    rightLegPivot.add(rLeg);
 
-    // 2. Team Mystic Long Coat & Belt
     const coat = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.34, 1.15, 10), coatMat);
-    coat.position.set(0, 1.22, 0);
+    coat.position.set(0, 0.34, 0);
     const belt = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.09, 0.36), beltMat);
-    belt.position.set(0, 0.88, 0);
-    root.add(coat, belt);
-
-    // 3. Long White Scarf
+    belt.position.set(0, 0, 0);
     const scarf = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.85, 0.12), scarfMat);
-    scarf.position.set(0.22, 1.45, -0.15);
+    scarf.position.set(0.22, 0.57, -0.15);
     scarf.rotation.x = 0.4;
-    root.add(scarf);
+    torsoPivot.add(coat, belt, scarf);
 
-    // 4. Arms & Pokéball Hand
     const armGeo = new THREE.CapsuleGeometry(0.1, 0.52, 6, 10);
     const lArm = new THREE.Mesh(armGeo, coatMat);
-    lArm.position.set(-0.48, 1.25, 0.1);
-    lArm.rotation.z = 0.2;
-    const rArm = new THREE.Mesh(armGeo, coatMat);
-    rArm.position.set(0.48, 1.25, 0.1);
-    rArm.rotation.z = -0.2;
-    const ballHolder = new THREE.Group();
-    ballHolder.position.set(0.58, 1.05, 0.28);
-    ballHolder.add(createPokeBall());
-    root.add(lArm, rArm, ballHolder);
+    lArm.position.set(-0.04, -0.25, 0.04);
+    lArm.rotation.z = 0.16;
+    leftArmPivot.add(lArm);
 
-    // 5. Head & Sleek Hair
+    const rArm = new THREE.Mesh(armGeo, coatMat);
+    rArm.position.set(0.04, -0.25, 0.04);
+    rArm.rotation.z = -0.16;
+    pokeBallGroup = createPokeBall();
+    pokeBallGroup.position.set(0.12, -0.45, 0.22);
+    rightArmPivot.add(rArm, pokeBallGroup);
+
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 14), skinMat);
-    head.position.set(0, 1.9, 0.04);
+    head.position.set(0, 0.24, 0);
     const hair = new THREE.Mesh(new THREE.SphereGeometry(0.32, 14, 12), hairMat);
     hair.scale.set(1.02, 0.9, 1.1);
-    hair.position.set(0, 2.02, -0.05);
-    root.add(head, hair);
-    addTrainerFace(1.9, 0.04, 0x0284c7);
+    hair.position.set(0, 0.36, -0.09);
+    headPivot.add(head, hair);
+    addTrainerFace(0.24, 0x0284c7);
   } else if (heroId === 'verdant_warden') {
     // Candela Style (Team Valor White & Red Sporty Trench Coat, Dark Leggings, Gloves, Pokéball)
     const coatMat = new THREE.MeshToonMaterial({ color: 0xf8fafc });
@@ -223,46 +359,46 @@ export function buildHeroModel(heroId: HeroId, appearance?: HeroAppearance): THR
     const hairMat = new THREE.MeshToonMaterial({ color: 0x451a03 });
     const skinMat = new THREE.MeshToonMaterial({ color: 0xc68b59 });
 
-    // 1. Leggings & Boots
     const legGeo = new THREE.CapsuleGeometry(0.14, 0.65, 6, 12);
     const lLeg = new THREE.Mesh(legGeo, tightMat);
-    lLeg.position.set(-0.2, 0.45, 0);
+    lLeg.position.set(0, -0.4, 0);
+    leftLegPivot.add(lLeg);
     const rLeg = new THREE.Mesh(legGeo, tightMat);
-    rLeg.position.set(0.2, 0.45, 0);
-    root.add(lLeg, rLeg);
+    rLeg.position.set(0, -0.4, 0);
+    rightLegPivot.add(rLeg);
 
-    // 2. White & Red Valor Sporty Coat & Belt
     const coat = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.33, 1.1, 10), coatMat);
-    coat.position.set(0, 1.2, 0);
+    coat.position.set(0, 0.32, 0);
     const redLapel = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.95, 0.38), redAccent);
-    redLapel.position.set(0.12, 1.2, 0.16);
+    redLapel.position.set(0.12, 0.32, 0.16);
     const belt = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.09, 0.36), beltMat);
-    belt.position.set(0, 0.86, 0);
-    root.add(coat, redLapel, belt);
+    belt.position.set(0, -0.02, 0);
+    torsoPivot.add(coat, redLapel, belt);
 
-    // 3. Arms, Gloves & Outstretched Pokéball Hand
     const armGeo = new THREE.CapsuleGeometry(0.1, 0.5, 6, 10);
     const lArm = new THREE.Mesh(armGeo, coatMat);
-    lArm.position.set(-0.48, 1.25, 0.1);
-    lArm.rotation.z = 0.25;
-    const rArm = new THREE.Mesh(armGeo, coatMat);
-    rArm.position.set(0.55, 1.32, 0.25);
-    rArm.rotation.z = -1.15;
-    const rGlove = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 10), redAccent);
-    rGlove.position.set(0.85, 1.42, 0.42);
-    const outstretchedBall = new THREE.Group();
-    outstretchedBall.position.set(0.98, 1.48, 0.52);
-    outstretchedBall.add(createPokeBall());
-    root.add(lArm, rArm, rGlove, outstretchedBall);
+    lArm.position.set(-0.04, -0.25, 0.04);
+    lArm.rotation.z = 0.2;
+    leftArmPivot.add(lArm);
 
-    // 4. Head & Styled Brown Hair
+    // Outstretched Pokéball arm centered around rightArmPivot shoulder
+    const rArm = new THREE.Mesh(armGeo, coatMat);
+    rArm.position.set(0.14, -0.14, 0.16);
+    rArm.rotation.z = -1.1;
+    rArm.rotation.x = -0.35;
+    const rGlove = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 10), redAccent);
+    rGlove.position.set(0.38, -0.04, 0.34);
+    pokeBallGroup = createPokeBall();
+    pokeBallGroup.position.set(0.5, 0.02, 0.44);
+    rightArmPivot.add(rArm, rGlove, pokeBallGroup);
+
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 14), skinMat);
-    head.position.set(0, 1.88, 0.04);
+    head.position.set(0, 0.22, 0);
     const hair = new THREE.Mesh(new THREE.DodecahedronGeometry(0.33, 1), hairMat);
     hair.scale.set(1.1, 0.85, 1.15);
-    hair.position.set(0, 2.12, -0.04);
-    root.add(head, hair);
-    addTrainerFace(1.88, 0.04, 0xb91c1c);
+    hair.position.set(0, 0.46, -0.08);
+    headPivot.add(head, hair);
+    addTrainerFace(0.22, 0xb91c1c);
   } else {
     // Lilium Style (Elite Pokémon GO Trainer with Pink Ponytails & Sporty Jacket)
     const jacketMat = new THREE.MeshToonMaterial({ color: 0x0284c7 });
@@ -272,38 +408,42 @@ export function buildHeroModel(heroId: HeroId, appearance?: HeroAppearance): THR
 
     const legGeo = new THREE.CapsuleGeometry(0.14, 0.62, 6, 10);
     const lLeg = new THREE.Mesh(legGeo, pantMat);
-    lLeg.position.set(-0.2, 0.46, 0);
+    lLeg.position.set(0, -0.39, 0);
+    leftLegPivot.add(lLeg);
     const rLeg = new THREE.Mesh(legGeo, pantMat);
-    rLeg.position.set(0.2, 0.46, 0);
-    root.add(lLeg, rLeg);
+    rLeg.position.set(0, -0.39, 0);
+    rightLegPivot.add(rLeg);
 
     const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.25, 0.88, 10), jacketMat);
-    torso.position.set(0, 1.18, 0);
+    torso.position.set(0, 0.3, 0);
     const belt = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.09, 0.35), beltMat);
-    belt.position.set(0, 0.84, 0);
-    root.add(torso, belt);
+    belt.position.set(0, -0.04, 0);
+    torsoPivot.add(torso, belt);
 
     const armGeo = new THREE.CapsuleGeometry(0.1, 0.48, 6, 10);
     const lArm = new THREE.Mesh(armGeo, jacketMat);
-    lArm.position.set(-0.44, 1.24, 0.18);
+    lArm.position.set(-0.02, -0.24, 0.1);
+    lArm.rotation.z = 0.14;
+    leftArmPivot.add(lArm);
+
     const rArm = new THREE.Mesh(armGeo, jacketMat);
-    rArm.position.set(0.44, 1.24, 0.18);
-    const ballHolder = new THREE.Group();
-    ballHolder.position.set(0.55, 1.02, 0.28);
-    ballHolder.add(createPokeBall());
-    root.add(lArm, rArm, ballHolder);
+    rArm.position.set(0.02, -0.24, 0.1);
+    rArm.rotation.z = -0.14;
+    pokeBallGroup = createPokeBall();
+    pokeBallGroup.position.set(0.1, -0.46, 0.22);
+    rightArmPivot.add(rArm, pokeBallGroup);
 
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.31, 16, 14), skinMat);
-    head.position.set(0, 1.86, 0.04);
+    head.position.set(0, 0.2, 0);
     const tailGeo = new THREE.ConeGeometry(0.22, 0.9, 10);
     const lTail = new THREE.Mesh(tailGeo, pinkHairMat);
-    lTail.position.set(-0.52, 1.7, -0.05);
+    lTail.position.set(-0.52, 0.04, -0.09);
     lTail.rotation.z = -0.55;
     const rTail = new THREE.Mesh(tailGeo, pinkHairMat);
-    rTail.position.set(0.52, 1.7, -0.05);
+    rTail.position.set(0.52, 0.04, -0.09);
     rTail.rotation.z = 0.55;
-    root.add(head, lTail, rTail);
-    addTrainerFace(1.86, 0.04, 0xdb2777);
+    headPivot.add(head, lTail, rTail);
+    addTrainerFace(0.2, 0xdb2777);
   }
 
   if (appearance) {
@@ -323,9 +463,9 @@ export function buildHeroModel(heroId: HeroId, appearance?: HeroAppearance): THR
     };
     const outfitColor = outfitColors[appearance.outfitStyle];
     if (outfitColor) {
-      root.traverse((object) => {
+      torsoPivot.traverse((object) => {
         if (!(object instanceof THREE.Mesh) || object.geometry.type !== 'CylinderGeometry') return;
-        if (object.position.y < 0.9 || object.position.y > 1.5 || Math.abs(object.position.x) > 0.25) return;
+        if (object.position.y < 0.05 || object.position.y > 0.65 || Math.abs(object.position.x) > 0.25) return;
         const material = object.material;
         if (Array.isArray(material)) {
           object.material = material.map((part) => {
@@ -352,83 +492,126 @@ export function buildHeroModel(heroId: HeroId, appearance?: HeroAppearance): THR
       aura.position.y = 0.035;
       root.add(aura);
     }
-    if (appearance.gender === 'female') root.scale.x = 1.04;
-    if (appearance.gender === 'male') root.scale.x = 1.02;
+    if (appearance.gender === 'female') bodyPivot.scale.x = 1.04;
+    if (appearance.gender === 'male') bodyPivot.scale.x = 1.02;
   }
+
+  const rig: HeroRig = {
+    root,
+    bodyPivot,
+    torsoPivot,
+    headPivot,
+    leftArmPivot,
+    rightArmPivot,
+    leftLegPivot,
+    rightLegPivot,
+    pokeBallGroup,
+    shieldDome,
+    shieldRing,
+    baseRightArmRot: rightArmPivot.rotation.clone(),
+    baseLeftArmRot: leftArmPivot.rotation.clone(),
+    flashMaterials: collectFlashMaterials(bodyPivot),
+  };
+  root.userData.heroRig = rig;
 
   return root;
 }
 
 /**
- * Builds the Enemy / Raid Boss / PvP Opponent / Training Dummy based on active mode:
- * - raid: Towering Virizion Finals Titan (Reference Picture 1)
- * - pvp / team: Zygarde Hound + Rival Classmate Trainer standing behind on the right (Reference Picture 2)
- * - training: Mechanical Dojo Training Dummy Mk.IV
+ * Builds the Enemy / Raid Boss / PvP Opponent / Training Dummy based on active mode
+ * with articulated limb/neck/head/spring pivots stored on userData.enemyRig.
  */
 export function buildEnemyModel(mode: GameMode): THREE.Group {
   const root = new THREE.Group();
   root.name = `enemy_${mode}`;
 
+  const bodyPivot = new THREE.Group();
+  root.add(bodyPivot);
+
+  const torsoPivot = new THREE.Group();
+  const neckPivot = new THREE.Group();
+  const headPivot = new THREE.Group();
+  let scarfPivot: THREE.Group | null = null;
+  let chestCore: THREE.Mesh | null = null;
+  const legPivots: THREE.Group[] = [];
+  let springPivot: THREE.Group | null = null;
+  let trainerPivot: THREE.Group | null = null;
+  let trainerRightArmPivot: THREE.Group | null = null;
+  let trainerLeftArmPivot: THREE.Group | null = null;
+  let trainerHeadPivot: THREE.Group | null = null;
+  let baseScale = 1;
+
   if (mode === 'raid') {
-    // Towering Virizion Finals Titan (Reference Picture 1)
-    root.add(createContactShadow(2.2, 0.5));
+    // Towering Virizion Finals Titan (scaled 0.78x so horns fit cleanly inside top arena frame)
+    root.add(createContactShadow(1.85, 0.5));
+    baseScale = 0.78;
+    bodyPivot.scale.setScalar(baseScale);
+
     const emeraldMat = new THREE.MeshStandardMaterial({ color: 0x84cc16, roughness: 0.38, metalness: 0.15 });
     const creamMat = new THREE.MeshStandardMaterial({ color: 0xecfccb, roughness: 0.45, metalness: 0.1 });
     const pinkMat = new THREE.MeshStandardMaterial({ color: 0xf43f5e, roughness: 0.35, metalness: 0.2 });
     const hoofMat = new THREE.MeshStandardMaterial({ color: 0x3f3f46, roughness: 0.7, metalness: 0.4 });
 
-    // 4 Tall Stag Legs with Pink Bands & Dark Hooves
-    const legPositions = [
-      [-0.48, 0.85, 0.55],
-      [0.48, 0.85, 0.55],
-      [-0.48, 0.85, -0.65],
-      [0.48, 0.85, -0.65],
+    // 4 Tall Stag Legs pivoted at hip height (y = 1.55)
+    const legPositions: [number, number, number][] = [
+      [-0.48, 1.55, 0.55],
+      [0.48, 1.55, 0.55],
+      [-0.48, 1.55, -0.65],
+      [0.48, 1.55, -0.65],
     ];
     legPositions.forEach(([x, y, z]) => {
+      const legPivot = new THREE.Group();
+      legPivot.position.set(x, y, z);
       const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.12, 1.7, 10), emeraldMat);
-      leg.position.set(x, y, z);
+      leg.position.set(0, -0.7, 0);
       const band = new THREE.Mesh(new THREE.TorusGeometry(0.145, 0.035, 8, 16), pinkMat);
       band.rotation.x = Math.PI / 2;
-      band.position.set(x, 0.55, z);
+      band.position.set(0, -1.0, 0);
       const hoof = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.15, 0.35, 8), hoofMat);
-      hoof.position.set(x, 0.18, z);
-      root.add(leg, band, hoof);
+      hoof.position.set(0, -1.37, 0);
+      legPivot.add(leg, band, hoof);
+      bodyPivot.add(legPivot);
+      legPivots.push(legPivot);
     });
 
-    // Sleek Quadruped Body + Cream Chest Crest + Leaf Flanks
+    // Sleek Quadruped Body + Cream Chest Crest
+    torsoPivot.position.set(0, 1.75, -0.05);
     const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.55, 1.25, 10, 16), emeraldMat);
     body.rotation.x = Math.PI / 2;
-    body.position.set(0, 1.75, -0.05);
-    root.add(body);
-
     const chest = new THREE.Mesh(new THREE.SphereGeometry(0.58, 14, 14), creamMat);
     chest.scale.set(0.88, 1.15, 0.75);
-    chest.position.set(0, 1.95, 0.52);
-    root.add(chest);
+    chest.position.set(0, 0.2, 0.57);
+    torsoPivot.add(body, chest);
+    bodyPivot.add(torsoPivot);
 
-    // Tall Regal Neck & Head
+    // Tall Regal Neck Pivot
+    neckPivot.position.set(0, 0.3, 0.52);
+    torsoPivot.add(neckPivot);
+
     const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.36, 1.35, 10), emeraldMat);
-    neck.position.set(0, 2.65, 0.55);
+    neck.position.set(0, 0.6, 0.08);
     neck.rotation.x = -0.15;
-    root.add(neck);
+    neckPivot.add(neck);
 
-    // Pink Neck Collar Frills
     const lFrill = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.6, 8), pinkMat);
-    lFrill.position.set(-0.36, 2.75, 0.52);
+    lFrill.position.set(-0.36, 0.7, 0.05);
     lFrill.rotation.z = 0.85;
     const rFrill = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.6, 8), pinkMat);
-    rFrill.position.set(0.36, 2.75, 0.52);
+    rFrill.position.set(0.36, 0.7, 0.05);
     rFrill.rotation.z = -0.85;
-    root.add(lFrill, rFrill);
+    neckPivot.add(lFrill, rFrill);
 
-    // Head & Swept-out Virizion Blade Horns + Crimson Eyes
+    // Head Pivot & Blade Horns + Crimson Eyes
+    headPivot.position.set(0, 1.18, 0.14);
+    neckPivot.add(headPivot);
+
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 16, 14), creamMat);
     head.scale.set(0.88, 0.82, 1.18);
-    head.position.set(0, 3.28, 0.65);
+    head.position.set(0, 0.05, 0.04);
 
     const snout = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.42, 12), emeraldMat);
     snout.rotation.x = Math.PI / 2;
-    snout.position.set(0, 3.24, 0.96);
+    snout.position.set(0, 0.01, 0.35);
 
     const bossEyeMat = new THREE.MeshStandardMaterial({
       color: 0xe11d48,
@@ -436,27 +619,25 @@ export function buildEnemyModel(mode: GameMode): THREE.Group {
       emissiveIntensity: 1.2,
     });
     const lBossEye = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 10), bossEyeMat);
-    lBossEye.position.set(-0.18, 3.32, 0.88);
+    lBossEye.position.set(-0.18, 0.09, 0.27);
     const rBossEye = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 10), bossEyeMat);
-    rBossEye.position.set(0.18, 3.32, 0.88);
-
-    root.add(head, snout, lBossEye, rBossEye);
+    rBossEye.position.set(0.18, 0.09, 0.27);
 
     const hornGeo = new THREE.ConeGeometry(0.18, 1.45, 6);
     const lHorn = new THREE.Mesh(hornGeo, emeraldMat);
-    lHorn.position.set(-0.68, 3.48, 0.55);
+    lHorn.position.set(-0.68, 0.25, -0.06);
     lHorn.rotation.z = 1.32;
     const rHorn = new THREE.Mesh(hornGeo, emeraldMat);
-    rHorn.position.set(0.68, 3.48, 0.55);
+    rHorn.position.set(0.68, 0.25, -0.06);
     rHorn.rotation.z = -1.32;
 
     const crest = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.55, 6), hoofMat);
-    crest.position.set(0, 3.62, 0.68);
+    crest.position.set(0, 0.39, 0.07);
     crest.rotation.x = 0.35;
 
-    root.add(lHorn, rHorn, crest);
+    headPivot.add(head, snout, lBossEye, rBossEye, lHorn, rHorn, crest);
   } else if (mode === 'pvp' || mode === 'team') {
-    // Reference Picture 2: Zygarde 10% Cyber-Hound in front + Rival Classmate Trainer standing behind on the right!
+    // Zygarde 10% Cyber-Hound in front + Rival Classmate Trainer standing neatly behind-right
     root.add(createContactShadow(1.25, 0.45));
 
     const obsidianMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.35, metalness: 0.4 });
@@ -469,67 +650,80 @@ export function buildEnemyModel(mode: GameMode): THREE.Group {
     const redCoreMat = new THREE.MeshStandardMaterial({
       color: 0xf43f5e,
       emissive: 0xe11d48,
-      emissiveIntensity: 0.8,
+      emissiveIntensity: 0.85,
     });
 
-    // Zygarde Hound Group
-    const hound = new THREE.Group();
+    torsoPivot.position.set(0, 0.88, 0);
+    bodyPivot.add(torsoPivot);
+
     const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 0.85, 8, 12), obsidianMat);
     body.rotation.x = Math.PI / 2;
-    body.position.set(0, 0.88, 0);
+    torsoPivot.add(body);
+
+    chestCore = new THREE.Mesh(new THREE.OctahedronGeometry(0.11, 0), redCoreMat);
+    chestCore.position.set(0, 0.17, 0.48);
+    torsoPivot.add(chestCore);
+
+    neckPivot.position.set(0, 0.18, 0.36);
+    torsoPivot.add(neckPivot);
 
     const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.22, 0.65, 8), obsidianMat);
-    neck.position.set(0, 1.32, 0.42);
+    neck.position.set(0, 0.26, 0.06);
     neck.rotation.x = -0.25;
+    neckPivot.add(neck);
+
+    scarfPivot = new THREE.Group();
+    scarfPivot.position.set(-0.18, 0.29, -0.02);
+    const scarf = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.95), neonGreenMat);
+    scarf.position.set(-0.04, 0, -0.18);
+    scarf.rotation.y = -0.45;
+    scarf.rotation.x = 0.35;
+    scarfPivot.add(scarf);
+    neckPivot.add(scarfPivot);
+
+    headPivot.position.set(0, 0.55, 0.16);
+    neckPivot.add(headPivot);
 
     const head = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.28, 0.48), obsidianMat);
-    head.position.set(0, 1.65, 0.56);
-
+    head.position.set(0, 0.04, 0.04);
     const zEyeGeo = new THREE.BoxGeometry(0.06, 0.04, 0.04);
     const zEyeL = new THREE.Mesh(zEyeGeo, neonGreenMat);
-    zEyeL.position.set(-0.1, 1.7, 0.79);
+    zEyeL.position.set(-0.1, 0.09, 0.27);
     const zEyeR = new THREE.Mesh(zEyeGeo, neonGreenMat);
-    zEyeR.position.set(0.1, 1.7, 0.79);
+    zEyeR.position.set(0.1, 0.09, 0.27);
 
     const earGeo = new THREE.ConeGeometry(0.08, 0.28, 5);
     const lEar = new THREE.Mesh(earGeo, obsidianMat);
-    lEar.position.set(-0.12, 1.88, 0.48);
+    lEar.position.set(-0.12, 0.27, -0.04);
     const rEar = new THREE.Mesh(earGeo, obsidianMat);
-    rEar.position.set(0.12, 1.88, 0.48);
+    rEar.position.set(0.12, 0.27, -0.04);
+    headPivot.add(head, zEyeL, zEyeR, lEar, rEar);
 
-    // Green Scarf Tentacle & Red Chest Core
-    const scarf = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.95), neonGreenMat);
-    scarf.position.set(-0.22, 1.35, 0.15);
-    scarf.rotation.y = -0.45;
-    scarf.rotation.x = 0.35;
-
-    const chestCore = new THREE.Mesh(new THREE.OctahedronGeometry(0.11, 0), redCoreMat);
-    chestCore.position.set(0, 1.05, 0.48);
-
-    // 4 Hound Legs (Front-left leg is neon green just like Zygarde 10%!)
+    // 4 Hound Legs pivoted at hip height (y = 0.78)
     const legCoords: [number, number, number, boolean][] = [
-      [-0.18, 0.42, 0.36, true],
-      [0.18, 0.42, 0.36, false],
-      [-0.18, 0.42, -0.36, false],
-      [0.18, 0.42, -0.36, false],
+      [-0.18, 0.78, 0.36, true],
+      [0.18, 0.78, 0.36, false],
+      [-0.18, 0.78, -0.36, false],
+      [0.18, 0.78, -0.36, false],
     ];
     legCoords.forEach(([x, y, z, isGreen]) => {
+      const legPivot = new THREE.Group();
+      legPivot.position.set(x, y, z);
       const leg = new THREE.Mesh(
         new THREE.CylinderGeometry(0.07, 0.05, 0.84, 8),
         isGreen ? neonGreenMat : obsidianMat
       );
-      leg.position.set(x, y, z);
-      hound.add(leg);
+      leg.position.set(0, -0.36, 0);
+      legPivot.add(leg);
+      bodyPivot.add(legPivot);
+      legPivots.push(legPivot);
     });
 
-    hound.add(body, neck, head, zEyeL, zEyeR, lEar, rEar, scarf, chestCore);
-    root.add(hound);
-
-    // Rival Classmate Trainer standing behind on the right (exactly like Reference Picture 2!)
-    const trainer = new THREE.Group();
-    trainer.position.set(1.85, 0, -1.65);
-    trainer.rotation.y = -0.35;
-    trainer.add(createContactShadow(0.75, 0.35));
+    // Rival Classmate Trainer positioned cleanly inside the upper-right arena frame
+    trainerPivot = new THREE.Group();
+    trainerPivot.position.set(0.48, 0, -1.35);
+    trainerPivot.rotation.y = 0.12;
+    trainerPivot.add(createContactShadow(0.75, 0.35));
 
     const skinMat = new THREE.MeshStandardMaterial({ color: 0xeab68c, roughness: 0.55 });
     const tankMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.45 });
@@ -542,70 +736,107 @@ export function buildEnemyModel(mode: GameMode): THREE.Group {
     tR.position.set(0.16, 0.44, 0);
     const tTorso = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.21, 0.78, 8), tankMat);
     tTorso.position.set(0, 1.08, 0);
+
+    trainerHeadPivot = new THREE.Group();
+    trainerHeadPivot.position.set(0, 1.56, 0);
     const tHead = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 12), skinMat);
-    tHead.position.set(0, 1.66, 0);
+    tHead.position.set(0, 0.1, 0);
     const tHair = new THREE.Mesh(new THREE.DodecahedronGeometry(0.25, 1), hairMat);
-    tHair.position.set(0, 1.78, -0.04);
-
+    tHair.position.set(0, 0.22, -0.04);
     const tEyeL = new THREE.Mesh(new THREE.SphereGeometry(0.028, 8, 8), shortsMat);
-    tEyeL.position.set(-0.07, 1.66, 0.2);
+    tEyeL.position.set(-0.07, 0.1, 0.2);
     const tEyeR = new THREE.Mesh(new THREE.SphereGeometry(0.028, 8, 8), shortsMat);
-    tEyeR.position.set(0.07, 1.66, 0.2);
+    tEyeR.position.set(0.07, 0.1, 0.2);
+    trainerHeadPivot.add(tHead, tHair, tEyeL, tEyeR);
 
+    trainerLeftArmPivot = new THREE.Group();
+    trainerLeftArmPivot.position.set(-0.3, 1.32, 0);
     const tArmL = new THREE.Mesh(new THREE.CapsuleGeometry(0.08, 0.46, 6, 8), skinMat);
-    tArmL.position.set(-0.36, 1.08, 0);
-    tArmL.rotation.z = 0.28;
-    const tArmR = new THREE.Mesh(new THREE.CapsuleGeometry(0.08, 0.46, 6, 8), skinMat);
-    tArmR.position.set(0.36, 1.08, 0);
-    tArmR.rotation.z = -0.28;
-
+    tArmL.position.set(-0.06, -0.24, 0);
+    tArmL.rotation.z = 0.25;
     const gloveL = new THREE.Mesh(new THREE.SphereGeometry(0.095, 8, 8), shortsMat);
-    gloveL.position.set(-0.44, 0.84, 0.04);
-    const gloveR = new THREE.Mesh(new THREE.SphereGeometry(0.095, 8, 8), shortsMat);
-    gloveR.position.set(0.44, 0.84, 0.04);
+    gloveL.position.set(-0.14, -0.48, 0.04);
+    trainerLeftArmPivot.add(tArmL, gloveL);
 
-    trainer.add(tL, tR, tTorso, tHead, tHair, tEyeL, tEyeR, tArmL, tArmR, gloveL, gloveR);
-    root.add(trainer);
+    trainerRightArmPivot = new THREE.Group();
+    trainerRightArmPivot.position.set(0.3, 1.32, 0);
+    const tArmR = new THREE.Mesh(new THREE.CapsuleGeometry(0.08, 0.46, 6, 8), skinMat);
+    tArmR.position.set(0.06, -0.24, 0);
+    tArmR.rotation.z = -0.25;
+    const gloveR = new THREE.Mesh(new THREE.SphereGeometry(0.095, 8, 8), shortsMat);
+    gloveR.position.set(0.14, -0.48, 0.04);
+    trainerRightArmPivot.add(tArmR, gloveR);
+
+    trainerPivot.add(tL, tR, tTorso, trainerHeadPivot, trainerLeftArmPivot, trainerRightArmPivot);
+    root.add(trainerPivot);
   } else {
-    // Training Mode: Mechanical Wooden Dojo Training Dummy Mk.IV
+    // Training Mode: Mechanical Wooden Dojo Training Dummy Mk.IV with physical spring-post pivot
     root.add(createContactShadow(1.2, 0.42));
     const oakMat = new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.65, metalness: 0.1 });
     const brassMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.25, metalness: 0.85 });
     const targetRedMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.4 });
     const targetWhiteMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.4 });
 
-    // Heavy Iron/Brass Base & Spring Post
     const base = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.78, 0.22, 16), brassMat);
     base.position.set(0, 0.11, 0);
+    bodyPivot.add(base);
+
+    springPivot = new THREE.Group();
+    springPivot.position.set(0, 0.22, 0);
+    bodyPivot.add(springPivot);
+
+    const springCoil = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.045, 8, 16), brassMat);
+    springCoil.rotation.x = Math.PI / 2;
+    springCoil.position.set(0, 0.06, 0);
+
     const post = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 1.85, 12), oakMat);
-    post.position.set(0, 1.02, 0);
+    post.position.set(0, 0.8, 0);
 
-    // Padded Wooden Body & Crossbar Arms
+    torsoPivot.position.set(0, 1.13, 0);
     const body = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.34, 1.05, 12), oakMat);
-    body.position.set(0, 1.35, 0);
-
     const crossbar = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 1.65, 10), oakMat);
     crossbar.rotation.z = Math.PI / 2;
-    crossbar.position.set(0, 1.48, 0);
+    crossbar.position.set(0, 0.13, 0);
 
-    // Bullseye Target Shield on Chest
     const shieldOuter = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.06, 18), targetRedMat);
     shieldOuter.rotation.x = Math.PI / 2;
-    shieldOuter.position.set(0, 1.38, 0.36);
+    shieldOuter.position.set(0, 0.03, 0.36);
 
     const shieldInner = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.08, 18), targetWhiteMat);
     shieldInner.rotation.x = Math.PI / 2;
-    shieldInner.position.set(0, 1.38, 0.38);
+    shieldInner.position.set(0, 0.03, 0.38);
 
-    // Dummy Head with Scholar Headband
+    torsoPivot.add(body, crossbar, shieldOuter, shieldInner);
+
+    headPivot.position.set(0, 1.93, 0);
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 14, 14), oakMat);
-    head.position.set(0, 2.15, 0);
     const headband = new THREE.Mesh(new THREE.TorusGeometry(0.31, 0.045, 8, 20), targetRedMat);
     headband.rotation.x = Math.PI / 2;
-    headband.position.set(0, 2.24, 0);
+    headband.position.set(0, 0.09, 0);
+    headPivot.add(head, headband);
 
-    root.add(base, post, body, crossbar, shieldOuter, shieldInner, head, headband);
+    springPivot.add(springCoil, post, torsoPivot, headPivot);
   }
+
+  const rig: EnemyRig = {
+    root,
+    mode,
+    bodyPivot,
+    torsoPivot,
+    neckPivot,
+    headPivot,
+    scarfPivot,
+    chestCore,
+    legPivots,
+    springPivot,
+    trainerPivot,
+    trainerRightArmPivot,
+    trainerLeftArmPivot,
+    trainerHeadPivot,
+    baseScale,
+    flashMaterials: collectFlashMaterials(root),
+  };
+  root.userData.enemyRig = rig;
 
   return root;
 }

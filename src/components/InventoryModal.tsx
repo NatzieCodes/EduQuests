@@ -22,13 +22,16 @@ import {
 } from 'lucide-react';
 import { extractStudyText } from '../services/studyFiles';
 import { generateQuizDeck, StudyMaterialSelection } from '../services/quizGenerator';
+import {
+  FOLDER_COLORS,
+  getDeckFolderId,
+  loadDeckFolders,
+  loadStudyFolders,
+  saveDeckFolders,
+  saveStudyFolders,
+  StudyFolder,
+} from '../services/studyFolders';
 import { StudyMaterialPicker } from './StudyMaterialPicker';
-
-interface StudyFolder {
-  id: string;
-  name: string;
-  color: string;
-}
 
 interface ImportedPdf {
   id: string;
@@ -36,20 +39,6 @@ interface ImportedPdf {
   text: string;
   addedAt: string;
 }
-
-const FOLDER_COLORS = [
-  { name: 'Red', hex: '#ef4444' },
-  { name: 'Blue', hex: '#3b82f6' },
-  { name: 'Green', hex: '#22c55e' },
-  { name: 'Yellow', hex: '#facc15' },
-  { name: 'Orange', hex: '#f97316' },
-  { name: 'Purple', hex: '#a855f7' },
-  { name: 'Pink', hex: '#ec4899' },
-  { name: 'Black', hex: '#111827' },
-  { name: 'White', hex: '#ffffff' },
-  { name: 'Gray', hex: '#9ca3af' },
-  { name: 'Brown', hex: '#92400e' },
-];
 
 type RgbValue = { red: number; green: number; blue: number };
 const toHex = ({ red, green, blue }: RgbValue) =>
@@ -105,27 +94,8 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [battleMinutes, setBattleMinutes] = useState('3');
   const [battleMinutesError, setBattleMinutesError] = useState('');
-  const [folders, setFolders] = useState<StudyFolder[]>(() => {
-    try {
-      const saved = localStorage.getItem('eduquests-study-folders');
-      if (saved) return JSON.parse(saved) as StudyFolder[];
-    } catch {
-      // Use defaults when storage is unavailable.
-    }
-    return [
-      { id: 'general', name: 'General Review', color: '#fbbf24' },
-      { id: 'imported', name: 'Imported PDFs', color: '#38bdf8' },
-    ];
-  });
-  const [deckFolders, setDeckFolders] = useState<Record<string, string>>(() => {
-    try {
-      const saved = localStorage.getItem('eduquests-deck-folders');
-      if (saved) return JSON.parse(saved) as Record<string, string>;
-    } catch {
-      // Use the general folder by default.
-    }
-    return {};
-  });
+  const [folders, setFolders] = useState<StudyFolder[]>(loadStudyFolders);
+  const [deckFolders, setDeckFolders] = useState<Record<string, string>>(loadDeckFolders);
   const [newFolderName, setNewFolderName] = useState('');
   const [newFolderColor, setNewFolderColor] = useState('#facc15');
   const [rgbTargetId, setRgbTargetId] = useState<string | null>(null);
@@ -147,11 +117,17 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
   const [draggingFile, setDraggingFile] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem('eduquests-study-folders', JSON.stringify(folders));
+    if (!isOpen) return;
+    setFolders(loadStudyFolders());
+    setDeckFolders(loadDeckFolders());
+  }, [isOpen]);
+
+  useEffect(() => {
+    saveStudyFolders(folders);
   }, [folders]);
 
   useEffect(() => {
-    localStorage.setItem('eduquests-deck-folders', JSON.stringify(deckFolders));
+    saveDeckFolders(deckFolders);
   }, [deckFolders]);
 
   useEffect(() => {
@@ -322,7 +298,11 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
         sourceType: selectedMaterial?.kind === 'url' ? 'url' : selectedMaterial?.kind === 'video' ? 'video' : undefined,
         video: selectedMaterial?.video,
       });
-      setDeckFolders((current) => ({ ...current, [deck.id]: targetFolderId }));
+      setDeckFolders((current) => {
+        const next = { ...current, [deck.id]: targetFolderId };
+        saveDeckFolders(next);
+        return next;
+      });
       onDeckCreated(deck, 'gemini', startBattleAfter, durationSec);
       setLoading(false);
       if (startBattleAfter) onClose();
@@ -511,7 +491,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
               {openFolderId === 'all' ? (
                 <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 content-start">
                   {folders.map((folder) => {
-                    const fileCount = decks.filter((deck) => (deckFolders[deck.id] || 'general') === folder.id).length;
+                    const fileCount = decks.filter((deck) => getDeckFolderId(deckFolders, deck.id, folders) === folder.id).length;
                     return (
                       <article
                         key={folder.id}
@@ -604,7 +584,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
               ) : (
                 <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 content-start">
                   {decks
-                    .filter((deck) => (deckFolders[deck.id] || 'general') === openFolderId)
+                    .filter((deck) => getDeckFolderId(deckFolders, deck.id, folders) === openFolderId)
                     .map((deck) => {
                       const isActive = activeDeck.id === deck.id;
                       return (
@@ -668,7 +648,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                         </article>
                       );
                     })}
-                  {decks.filter((deck) => (deckFolders[deck.id] || 'general') === openFolderId).length === 0 && (
+                  {decks.filter((deck) => getDeckFolderId(deckFolders, deck.id, folders) === openFolderId).length === 0 && (
                     <div className="col-span-full py-16 text-center rounded-2xl border border-dashed border-slate-300 text-slate-500">
                       <FileText className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                       <div className="text-xs font-display font-black">No PDF files in this folder</div>
@@ -769,13 +749,15 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                 </fieldset>
               </div>
 
-              <div>
-                <label className="mb-1 block text-[10px] font-bold text-slate-700">Study material</label>
-                <StudyMaterialPicker
-                  value={selectedMaterial}
-                  onSelect={selectMaterial}
-                  disabled={loading || readingFile}
-                />
+              <div className="flex flex-1 min-h-0 flex-col gap-1.5">
+                <label className="block shrink-0 text-[10px] font-bold text-slate-700">Study material</label>
+                <div className="shrink-0">
+                  <StudyMaterialPicker
+                    value={selectedMaterial}
+                    onSelect={selectMaterial}
+                    disabled={loading || readingFile}
+                  />
+                </div>
                 <textarea
                   rows={4}
                   value={notes}
@@ -786,7 +768,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                     setErrorMsg(null);
                   }}
                   placeholder="Paste study text here, or attach a PDF, TXT, link, or video."
-                  className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-amber-500 font-mono text-[10px] leading-relaxed resize-none"
+                  className="min-h-[84px] w-full flex-1 px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-amber-500 font-mono text-[10px] leading-relaxed resize-none"
                 />
               </div>
 
